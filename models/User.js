@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 class User {
   static async create(userData) {
     const { email, password, full_name, phone, role, business_name, tax_id } = userData;
+    const normalizedEmail = (email || '').trim().toLowerCase();
     
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -15,15 +16,16 @@ class User {
     `;
     
     const is_approved = role === 'admin' || role === 'customer';
-    const values = [email, hashedPassword, full_name, phone, role, business_name, tax_id, is_approved];
+    const values = [normalizedEmail, hashedPassword, full_name, phone, role, business_name, tax_id, is_approved];
     
     const result = await db.query(query, values);
     return result.rows[0];
   }
 
   static async findByEmail(email) {
+    const normalizedEmail = (email || '').trim().toLowerCase();
     const query = 'SELECT * FROM users WHERE email = $1';
-    const result = await db.query(query, [email]);
+    const result = await db.query(query, [normalizedEmail]);
     return result.rows[0];
   }
 

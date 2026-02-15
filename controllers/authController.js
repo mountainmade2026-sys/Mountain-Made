@@ -19,14 +19,15 @@ const generateToken = (user) => {
 exports.register = async (req, res) => {
   try {
     const { email, password, full_name, phone, role, business_name, tax_id } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
 
     // Validate required fields
-    if (!email || !password || !full_name) {
+    if (!normalizedEmail || !password || !full_name) {
       return res.status(400).json({ error: 'Email, password, and full name are required.' });
     }
 
     // Check if user exists
-    const existingUser = await User.findByEmail(email);
+    const existingUser = await User.findByEmail(normalizedEmail);
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists.' });
     }
@@ -38,7 +39,7 @@ exports.register = async (req, res) => {
 
     // Create user
     const user = await User.create({
-      email,
+      email: normalizedEmail,
       password,
       full_name,
       phone,
@@ -76,12 +77,14 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    const normalizedEmail = (email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
     // Find user
-    const user = await User.findByEmail(email);
+    const user = await User.findByEmail(normalizedEmail);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
