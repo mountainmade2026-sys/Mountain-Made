@@ -111,6 +111,46 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// Setup endpoint to create admin user (one-time use)
+app.get('/api/setup-admin', async (req, res) => {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@mountainmade.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+
+    // Check if admin already exists
+    const existingAdmin = await User.findByEmail(adminEmail);
+    if (existingAdmin) {
+      return res.json({ 
+        success: true, 
+        message: 'Admin user already exists',
+        email: adminEmail
+      });
+    }
+
+    // Create admin user
+    await User.create({
+      email: adminEmail,
+      password: adminPassword,
+      full_name: 'Admin User',
+      phone: '1234567890',
+      role: 'admin'
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Admin user created successfully!',
+      email: adminEmail,
+      password: 'Admin@123'
+    });
+  } catch (error) {
+    console.error('Setup admin error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Serve HTML pages
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
