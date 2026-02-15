@@ -85,7 +85,12 @@
 
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" id="password" class="form-input" required>
+                    <div style="position: relative;">
+                        <input type="password" id="password" class="form-input" required>
+                        <button type="button" id="toggle-password" aria-label="Toggle password visibility" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-eye" id="toggle-password-icon"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
@@ -145,6 +150,20 @@
                 showAlert('Login failed: ' + error.message, 'error');
             }
         });
+
+        // Toggle password visibility
+        const togglePasswordBtn = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        const togglePasswordIcon = document.getElementById('toggle-password-icon');
+
+        if (togglePasswordBtn && passwordInput && togglePasswordIcon) {
+            togglePasswordBtn.addEventListener('click', () => {
+                const isHidden = passwordInput.type === 'password';
+                passwordInput.type = isHidden ? 'text' : 'password';
+                togglePasswordIcon.classList.toggle('fa-eye', !isHidden);
+                togglePasswordIcon.classList.toggle('fa-eye-slash', isHidden);
+            });
+        }
 
         // Check if already logged in
         auth.checkAuth().then(user => {
