@@ -1,0 +1,21 @@
+CREATE APP ICONS:
+
+You need 2 PNG icon files:
+
+1. icon-192.png (192x192 pixels)
+2. icon-512.png (512x512 pixels)
+
+EASIEST WAY:
+1. Go to: https://www.favicon-generator.org/
+2. Upload your logo/image
+3. Select "Generate icons for Android"
+4. Download the 192x192 and 512x512 PNG files
+5. Rename them to icon-192.png and icon-512.png
+6. Place them in: public/images/
+
+OR use this free tool:
+https://realfavicongenerator.net/
+
+TEMPORARY FIX:
+For now, I'll update manifest.json to not require icons.
+This will let you build the APK, but you should add proper icons later!

@@ -1,0 +1,263 @@
+/* ============================================================================
+   MOBILE RESPONSIVE ENHANCEMENTS
+   Add this to the END of styles.css for better mobile experience
+   ============================================================================ */
+
+/* Touch-friendly buttons and inputs */
+@media (max-width: 767px) {
+  input, textarea, select, button, .btn {
+    min-height: 44px; /* Apple's recommended touch target size */
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Better form spacing on mobile */
+  .form-group {
+    margin-bottom: var(--space-4);
+  }
+  
+  .form-label {
+    font-size: 0.9rem;
+    margin-bottom: var(--space-2);
+  }
+  
+  /* Mobile-friendly tables */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table thead {
+    display: none;
+  }
+  
+  table tr {
+    display: block;
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+  
+  table td {
+    display: block;
+    text-align: right;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border-primary);
+  }
+  
+  table td:last-child {
+    border-bottom: none;
+  }
+  
+  table td:before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  
+  /* Cart improvements */
+  .cart-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--space-3);
+  }
+  
+  .cart-item-image {
+    width: 100% !important;
+    max-width: 200px;
+    margin: 0 auto;
+  }
+  
+  .cart-item-details {
+    width: 100%;
+  }
+  
+  .cart-item-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  /* Product details improvements */
+  .product-gallery {
+    flex-direction: column !important;
+  }
+  
+  .product-images {
+    width: 100% !important;
+  }
+  
+  .product-info {
+    width: 100% !important;
+  }
+  
+  /* Admin dashboard improvements */
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .dashboard-card {
+    min-height: auto !important;
+  }
+  
+  /* Search bar improvements */
+  .search-container {
+    width: 100%;
+    padding: 0 var(--space-2);
+  }
+  
+  .search-input {
+    font-size: 16px; /* Prevent iOS zoom */
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  /* Modal improvements for mobile */
+  .modal {
+    margin: 0;
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .modal-content {
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+  
+  /* Checkout page improvements */
+  .checkout-container {
+    flex-direction: column !important;
+  }
+  
+  .checkout-form, .order-summary {
+    width: 100% !important;
+  }
+  
+  /* Orders page improvements */
+  .order-card {
+    padding: var(--space-3);
+  }
+  
+  .order-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: var(--space-2);
+  }
+  
+  .order-items {
+    overflow-x: auto;
+  }
+}
+
+/* Extra mobile optimizations */
+@media (max-width: 575px) {
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Better spacing for small screens */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Optimize images */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Better spacing for cards in grids */
+  .product-card, .category-card {
+    margin: 0 auto;
+    max-width: 100%;
+  }
+  
+  /* Sticky header improvements */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  /* Footer stacking */
+  .footer-links {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  
+  .footer-column {
+    width: 100%;
+  }
+  
+  /* Authentication forms */
+  .auth-container {
+    padding: var(--space-4) var(--space-3);
+    max-width: 100%;
+  }
+  
+  .auth-card {
+    padding: var(--space-5) var(--space-3);
+  }
+  
+  /* Address cards */
+  .address-card {
+    padding: var(--space-3);
+  }
+  
+  .address-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .address-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Landscape mode optimizations for phones */
+@media (max-height: 600px) and (orientation: landscape) {
+  .hero {
+    padding: var(--space-6) var(--space-3);
+  }
+  
+  .hero h1 {
+    font-size: 1.5rem;
+  }
+  
+  .hero p {
+    font-size: 0.85rem;
+    margin-bottom: var(--space-3);
+  }
+  
+  .modal {
+    max-height: 100vh;
+  }
+  
+  .navbar {
+    height: 50px;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode support (if device prefers) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --text-primary: #ffffff;
+    --text-secondary: #d4d4d4;
+    --border-primary: #404040;
+  }
+}
