@@ -5,8 +5,6 @@ services:
     env: docker
     plan: free
     region: singapore
-    databaseName: mountain_made
-    databaseUser: mountain_made_user
 
   # Web Service
   - type: web
@@ -19,8 +17,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: DB_HOST
         fromDatabase:
           name: mountain-made-db
@@ -42,7 +38,7 @@ services:
           name: mountain-made-db
           property: password
       - key: JWT_SECRET
-        generateValue: true
+        value: mountain-made-secret-key-2026-change-this
       - key: ADMIN_EMAIL
         value: admin@mountainmade.com
       - key: ADMIN_PASSWORD
