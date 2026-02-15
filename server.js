@@ -117,30 +117,12 @@ app.get('/api/setup-admin', async (req, res) => {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@mountainmade.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
 
-    // Check if admin already exists
-    const existingAdmin = await User.findByEmail(adminEmail);
-    if (existingAdmin) {
-      return res.json({ 
-        success: true, 
-        message: 'Admin user already exists',
-        email: adminEmail
-      });
-    }
-
-    // Create admin user
-    await User.create({
-      email: adminEmail,
-      password: adminPassword,
-      full_name: 'Admin User',
-      phone: '1234567890',
-      role: 'admin'
-    });
+    await User.ensureAdmin(adminEmail, adminPassword);
 
     res.json({ 
       success: true, 
-      message: 'Admin user created successfully!',
-      email: adminEmail,
-      password: 'Admin@123'
+      message: 'Admin user ensured successfully',
+      email: adminEmail
     });
   } catch (error) {
     console.error('Setup admin error:', error);
@@ -214,17 +196,8 @@ const initializeApp = async () => {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@mountainmade.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
 
-    const existingAdmin = await User.findByEmail(adminEmail);
-    if (!existingAdmin) {
-      await User.create({
-        email: adminEmail,
-        password: adminPassword,
-        full_name: 'Admin User',
-        phone: '1234567890',
-        role: 'admin'
-      });
-      console.log(`✓ Admin user created: ${adminEmail}`);
-    }
+    await User.ensureAdmin(adminEmail, adminPassword);
+    console.log(`✓ Admin user ensured: ${adminEmail}`);
 
     console.log('✓ Application initialized successfully');
   } catch (error) {
