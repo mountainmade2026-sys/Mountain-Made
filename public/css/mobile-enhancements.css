@@ -261,13 +261,7 @@
   }
 }
 
-/* Dark mode support (if device prefers) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #1a1a1a;
-    --bg-secondary: #2d2d2d;
-    --text-primary: #ffffff;
-    --text-secondary: #d4d4d4;
-    --border-primary: #404040;
-  }
-}
+/* Note: automatic OS dark-mode styles removed so that
+   the site only goes dark when the in-site theme toggle
+   adds the .dark-mode class on <body>. This keeps colors
+   consistent across different browsers. */
