@@ -259,14 +259,8 @@ const initializeDatabase = async () => {
     `);
 
     await client.query(`
-      DO $$
-      BEGIN
-        BEGIN
-          ALTER TABLE site_settings ADD CONSTRAINT site_settings_setting_key_unique UNIQUE (setting_key);
-        EXCEPTION WHEN duplicate_object THEN
-          NULL;
-        END;
-      END $$;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_setting_key_unique
+      ON site_settings (setting_key);
     `);
 
     // Create Products table
