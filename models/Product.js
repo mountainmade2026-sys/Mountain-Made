@@ -1,7 +1,63 @@
 const db = require('../config/database');
 
 class Product {
+  static async ensureSchemaCompatibility() {
+    if (this._schemaReady) return;
+    try {
+      await db.pool.query(`
+        CREATE TABLE IF NOT EXISTS categories (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(100) UNIQUE NOT NULL,
+          description TEXT,
+          image_url VARCHAR(500),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await db.pool.query(`
+        CREATE TABLE IF NOT EXISTS homepage_sections (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(100) UNIQUE NOT NULL,
+          description TEXT,
+          sort_order INTEGER DEFAULT 0,
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS category_id INTEGER');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS homepage_section_id INTEGER');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INTEGER DEFAULT 0');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS min_wholesale_qty INTEGER DEFAULT 10');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesale_price NUMERIC');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true');
+      await db.pool.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb");
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS weight NUMERIC');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50)');
+      await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+
+      await db.pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='products' AND column_name='stock'
+          ) THEN
+            UPDATE products
+            SET stock_quantity = COALESCE(stock_quantity, stock, 0)
+            WHERE stock_quantity IS NULL OR stock_quantity = 0;
+          END IF;
+        END $$;
+      `);
+    } catch (err) {
+      console.warn('ensureSchemaCompatibility warning:', err.message || err);
+    }
+    this._schemaReady = true;
+  }
+
   static async ensureDiscountColumns() {
+    await this.ensureSchemaCompatibility();
     if (this._discountReady) return;
     try {
       await db.pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_price NUMERIC');
@@ -111,8 +167,17 @@ class Product {
       values.push(filters.offset);
     }
 
-    const result = await db.query(query, values);
-    return result.rows;
+    try {
+      const result = await db.query(query, values);
+      return result.rows;
+    } catch (error) {
+      const code = error?.code;
+      if (code === '42703' || code === '42P01') {
+        const fallbackResult = await db.query('SELECT * FROM products ORDER BY id DESC');
+        return fallbackResult.rows;
+      }
+      throw error;
+    }
   }
 
   static async findById(id) {
@@ -123,8 +188,17 @@ class Product {
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.id = $1
     `;
-    const result = await db.query(query, [id]);
-    return result.rows[0];
+    try {
+      const result = await db.query(query, [id]);
+      return result.rows[0];
+    } catch (error) {
+      const code = error?.code;
+      if (code === '42703' || code === '42P01') {
+        const fallbackResult = await db.query('SELECT * FROM products WHERE id = $1', [id]);
+        return fallbackResult.rows[0];
+      }
+      throw error;
+    }
   }
 
   static async update(id, productData) {
