@@ -159,8 +159,33 @@ const initializeDatabase = async () => {
       DO $$ 
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='users' AND column_name='is_approved') THEN
+          ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT false;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                       WHERE table_name='users' AND column_name='is_blocked') THEN
           ALTER TABLE users ADD COLUMN is_blocked BOOLEAN DEFAULT false;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='users' AND column_name='updated_at') THEN
+          ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='users' AND column_name='business_name') THEN
+          ALTER TABLE users ADD COLUMN business_name VARCHAR(255);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='users' AND column_name='tax_id') THEN
+          ALTER TABLE users ADD COLUMN tax_id VARCHAR(50);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='users' AND column_name='profile_photo') THEN
+          ALTER TABLE users ADD COLUMN profile_photo VARCHAR(500);
         END IF;
       END $$;
     `);
@@ -200,6 +225,50 @@ const initializeDatabase = async () => {
       );
     `);
 
+    // Legacy compatibility: old site_settings schema used key/value columns
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'site_settings' AND column_name = 'key'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'site_settings' AND column_name = 'setting_key'
+        ) THEN
+          ALTER TABLE site_settings RENAME COLUMN key TO setting_key;
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'site_settings' AND column_name = 'value'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'site_settings' AND column_name = 'setting_value'
+        ) THEN
+          ALTER TABLE site_settings RENAME COLUMN value TO setting_value;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'site_settings' AND column_name = 'updated_at'
+        ) THEN
+          ALTER TABLE site_settings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          ALTER TABLE site_settings ADD CONSTRAINT site_settings_setting_key_unique UNIQUE (setting_key);
+        EXCEPTION WHEN duplicate_object THEN
+          NULL;
+        END;
+      END $$;
+    `);
+
     // Create Products table
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
@@ -227,8 +296,61 @@ const initializeDatabase = async () => {
       DO $$ 
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='category_id') THEN
+          ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                       WHERE table_name='products' AND column_name='homepage_section_id') THEN
           ALTER TABLE products ADD COLUMN homepage_section_id INTEGER REFERENCES homepage_sections(id) ON DELETE SET NULL;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='stock_quantity') THEN
+          ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 0;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='min_wholesale_qty') THEN
+          ALTER TABLE products ADD COLUMN min_wholesale_qty INTEGER DEFAULT 10;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='wholesale_price') THEN
+          ALTER TABLE products ADD COLUMN wholesale_price DECIMAL(10, 2);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='is_active') THEN
+          ALTER TABLE products ADD COLUMN is_active BOOLEAN DEFAULT true;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='images') THEN
+          ALTER TABLE products ADD COLUMN images JSONB DEFAULT '[]';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='weight') THEN
+          ALTER TABLE products ADD COLUMN weight DECIMAL(10, 2);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='unit') THEN
+          ALTER TABLE products ADD COLUMN unit VARCHAR(50);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='products' AND column_name='updated_at') THEN
+          ALTER TABLE products ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+
+        -- Legacy compatibility: old schema used "stock" instead of "stock_quantity"
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='products' AND column_name='stock') THEN
+          UPDATE products
+          SET stock_quantity = COALESCE(stock_quantity, stock, 0)
+          WHERE stock_quantity IS NULL OR stock_quantity = 0;
         END IF;
       END $$;
     `);
@@ -268,6 +390,34 @@ const initializeDatabase = async () => {
       BEGIN
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'order_number'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN order_number VARCHAR(50);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'shipping_address'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN shipping_address JSONB DEFAULT '{}'::jsonb;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'payment_method'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN payment_method VARCHAR(50);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'notes'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN notes TEXT;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
           WHERE table_name = 'orders' AND column_name = 'delivery_speed'
         ) THEN
           ALTER TABLE orders ADD COLUMN delivery_speed VARCHAR(50);
@@ -279,6 +429,24 @@ const initializeDatabase = async () => {
         ) THEN
           ALTER TABLE orders ADD COLUMN delivery_charge DECIMAL(10, 2) DEFAULT 0;
         END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'updated_at'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          ALTER TABLE orders ADD CONSTRAINT orders_order_number_unique UNIQUE (order_number);
+        EXCEPTION WHEN duplicate_object THEN
+          NULL;
+        END;
       END $$;
     `);
 
@@ -294,6 +462,25 @@ const initializeDatabase = async () => {
         subtotal DECIMAL(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'order_items' AND column_name = 'product_name'
+        ) THEN
+          ALTER TABLE order_items ADD COLUMN product_name VARCHAR(255);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'order_items' AND column_name = 'subtotal'
+        ) THEN
+          ALTER TABLE order_items ADD COLUMN subtotal DECIMAL(10, 2);
+        END IF;
+      END $$;
     `);
 
     // Create Addresses table
@@ -313,6 +500,63 @@ const initializeDatabase = async () => {
         is_default BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'addresses' AND column_name = 'label'
+        ) THEN
+          ALTER TABLE addresses ADD COLUMN label VARCHAR(100) DEFAULT 'Address';
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'addresses' AND column_name = 'postal_code'
+        ) THEN
+          ALTER TABLE addresses ADD COLUMN postal_code VARCHAR(20);
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'addresses' AND column_name = 'pincode'
+        ) THEN
+          UPDATE addresses
+          SET postal_code = COALESCE(postal_code, pincode)
+          WHERE postal_code IS NULL;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'addresses' AND column_name = 'country'
+        ) THEN
+          ALTER TABLE addresses ADD COLUMN country VARCHAR(100) DEFAULT 'India';
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'addresses' AND column_name = 'updated_at'
+        ) THEN
+          ALTER TABLE addresses ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+
+    // Create backups table if missing
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS backups (
+        id SERIAL PRIMARY KEY,
+        filename VARCHAR(255) NOT NULL,
+        file_path TEXT NOT NULL,
+        drive VARCHAR(20),
+        file_size BIGINT DEFAULT 0,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        status VARCHAR(20) DEFAULT 'completed',
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 

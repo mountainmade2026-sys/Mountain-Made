@@ -4,7 +4,62 @@ const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
 const db = require('../config/database');
+const { initializeDatabase } = require('../config/database');
+const User = require('../models/User');
 const execAsync = promisify(exec);
+
+const syncTableSequence = async (tableName, columnName = 'id') => {
+  const sequenceResult = await db.query(
+    `SELECT pg_get_serial_sequence($1, $2) AS seq`,
+    [`public.${tableName}`, columnName]
+  );
+
+  const seq = sequenceResult.rows?.[0]?.seq;
+  if (!seq) return;
+
+  await db.query(
+    `SELECT setval($1, COALESCE((SELECT MAX(${columnName}) FROM ${tableName}), 1), true)`,
+    [seq]
+  );
+};
+
+const runPostRestoreRepair = async () => {
+  // Re-apply all idempotent schema migrations/defaults used by the app.
+  await initializeDatabase();
+
+  // Ensure admin users still exist after restore.
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@mountainmade.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'developer@mountainmade.com';
+  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
+
+  await User.ensureAdmin(adminEmail, adminPassword);
+  await User.ensureSuperAdmin(superAdminEmail, superAdminPassword);
+
+  // Fix sequence drift caused by SQL dumps restoring explicit IDs.
+  const tables = [
+    'users',
+    'categories',
+    'homepage_sections',
+    'products',
+    'cart',
+    'orders',
+    'order_items',
+    'addresses',
+    'uploads',
+    'contact_messages',
+    'backups'
+  ];
+
+  for (const tableName of tables) {
+    try {
+      await syncTableSequence(tableName);
+    } catch (error) {
+      // Table may not exist in some backups; initializeDatabase will recreate core tables.
+      console.warn(`Sequence sync warning for ${tableName}:`, error.message);
+    }
+  }
+};
 
 async function countUsersRowsInSql(sqlFilePath) {
   try {
@@ -77,6 +132,9 @@ exports.restoreDatabase = async (req, res) => {
     // Step 2: Restore SQL and stop on first error
     const restoreCmd = `"${psqlBinary}" -h ${dbHost} -p ${dbPort} -U ${dbUser} -d ${dbName} -v ON_ERROR_STOP=1 -f "${sqlFilePath}"`;
     await execAsync(restoreCmd, { env, windowsHide: true });
+
+    // Step 3: Repair schema/defaults/sequences for compatibility with older dumps
+    await runPostRestoreRepair();
 
     // Verify key data is present after restore
     let usersCount = 0;
