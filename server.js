@@ -188,6 +188,64 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// DB diagnostics endpoint for restore/schema troubleshooting
+app.get('/api/health/db', async (req, res) => {
+  try {
+    const checks = {};
+
+    const tableCheck = await database.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name IN ('users','products','categories','homepage_sections','orders','order_items','addresses','site_settings','cart','contact_messages','backups')
+      ORDER BY table_name
+    `);
+    checks.tables = tableCheck.rows.map(r => r.table_name);
+
+    const productColumns = await database.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'products'
+      ORDER BY ordinal_position
+    `);
+    checks.productColumns = productColumns.rows.map(r => r.column_name);
+
+    const categoryColumns = await database.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'categories'
+      ORDER BY ordinal_position
+    `);
+    checks.categoryColumns = categoryColumns.rows.map(r => r.column_name);
+
+    const sectionColumns = await database.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'homepage_sections'
+      ORDER BY ordinal_position
+    `);
+    checks.sectionColumns = sectionColumns.rows.map(r => r.column_name);
+
+    const counts = await database.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM products) AS products,
+        (SELECT COUNT(*)::int FROM categories) AS categories,
+        (SELECT COUNT(*)::int FROM homepage_sections) AS sections,
+        (SELECT COUNT(*)::int FROM users) AS users
+    `);
+    checks.counts = counts.rows[0];
+
+    res.json({ ok: true, checks });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: error.message,
+      code: error.code || null,
+      detail: error.detail || null
+    });
+  }
+});
+
 // Setup endpoint to create admin user (one-time use)
 app.get('/api/setup-admin', async (req, res) => {
   if (!allowSetupEndpoints) {
