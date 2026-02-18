@@ -5,6 +5,27 @@ class Product {
     if (this._schemaReady) return;
     try {
       await db.pool.query(`
+        CREATE TABLE IF NOT EXISTS products (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          category_id INTEGER,
+          homepage_section_id INTEGER,
+          price DECIMAL(10, 2) NOT NULL,
+          wholesale_price DECIMAL(10, 2),
+          stock_quantity INTEGER DEFAULT 0,
+          min_wholesale_qty INTEGER DEFAULT 10,
+          image_url VARCHAR(500),
+          images JSONB DEFAULT '[]'::jsonb,
+          is_active BOOLEAN DEFAULT true,
+          weight DECIMAL(10, 2),
+          unit VARCHAR(50),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await db.pool.query(`
         CREATE TABLE IF NOT EXISTS categories (
           id SERIAL PRIMARY KEY,
           name VARCHAR(100) UNIQUE NOT NULL,
@@ -281,18 +302,21 @@ class Product {
   }
 
   static async getAllCategories() {
+    await this.ensureSchemaCompatibility();
     const query = 'SELECT * FROM categories ORDER BY name';
     const result = await db.query(query);
     return result.rows;
   }
 
   static async getCategoryById(id) {
+    await this.ensureSchemaCompatibility();
     const query = 'SELECT * FROM categories WHERE id = $1';
     const result = await db.query(query, [id]);
     return result.rows[0];
   }
 
   static async createCategory(name, description, image_url) {
+    await this.ensureSchemaCompatibility();
     const query = `
       INSERT INTO categories (name, description, image_url)
       VALUES ($1, $2, $3)
