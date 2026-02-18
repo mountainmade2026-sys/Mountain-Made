@@ -17,6 +17,19 @@ const PORT = process.env.PORT || 3000;
 const allowSetupEndpoints = process.env.ALLOW_SETUP_ENDPOINTS === 'true';
 
 app.disable('x-powered-by');
+// Ensure req.secure and related proxy-derived fields behave correctly on Render/other proxies.
+app.set('trust proxy', 1);
+
+// Avoid stale HTML/JS on hosted deployments (fixes old auth logic being served).
+app.use((req, res, next) => {
+  const pathname = req.path;
+  const isAuthCriticalHtml = pathname === '/admin' || pathname === '/login' || pathname === '/register' || pathname.endsWith('.html');
+  const isAuthCriticalJs = pathname === '/js/main.js' || pathname === '/sw.js';
+  if (isAuthCriticalHtml || isAuthCriticalJs) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
+  next();
+});
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'public', 'uploads');

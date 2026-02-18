@@ -7149,28 +7149,31 @@
                     return;
                 }
 
+                // Primary auth check (uses cookie + bearer via api helper).
                 await auth.checkAuth();
 
-                if (!auth.isAuthenticated()) {
-                    try {
-                        const token = localStorage.getItem('token');
-                        if (token) {
-                            const fallbackResp = await fetch('/api/auth/check', {
-                                method: 'GET',
-                                headers: { Authorization: `Bearer ${token}` },
-                                credentials: 'include'
-                            });
-                            const fallbackData = await fallbackResp.json();
-                            if (fallbackData?.authenticated && fallbackData?.user) {
-                                auth.currentUser = fallbackData.user;
-                                if (typeof auth.updateUI === 'function') {
-                                    auth.updateUI();
-                                }
-                            }
+                // Hosted/network hardening: do one explicit no-cache check to avoid stale/proxy issues.
+                try {
+                    const token = localStorage.getItem('token');
+                    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+                    const resp = await fetch('/api/auth/check', {
+                        method: 'GET',
+                        headers,
+                        credentials: 'include',
+                        cache: 'no-store'
+                    });
+
+                    const contentType = resp.headers.get('content-type') || '';
+                    const data = contentType.includes('application/json') ? await resp.json() : null;
+                    if (data?.authenticated && data?.user) {
+                        auth.currentUser = data.user;
+                        if (typeof auth.updateUI === 'function') {
+                            auth.updateUI();
                         }
-                    } catch (fallbackAuthErr) {
-                        console.warn('Admin auth fallback failed:', fallbackAuthErr);
                     }
+                } catch (fallbackAuthErr) {
+                    console.warn('Admin auth re-check failed:', fallbackAuthErr);
                 }
 
                 const role = auth.currentUser?.role;

@@ -65,13 +65,27 @@ const api = {
   async request(endpoint, options = {}) {
     try {
       const token = localStorage.getItem('token');
+
+      const headers = {
+        ...(options.headers || {})
+      };
+
+      // Only set JSON content-type when sending a JSON body.
+      // Setting it for GET requests can cause unnecessary preflights in some hosted/network setups.
+      const hasBody = options.body !== undefined && options.body !== null;
+      const hasExplicitContentType = Object.keys(headers).some(k => k.toLowerCase() === 'content-type');
+      const isFormDataBody = (typeof FormData !== 'undefined') && (options.body instanceof FormData);
+      if (hasBody && !hasExplicitContentType && !isFormDataBody) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      if (token && !headers.Authorization) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && !options.headers?.Authorization ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...options.headers,
-        },
+        headers,
         credentials: 'include'
       });
 
