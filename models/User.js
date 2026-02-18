@@ -72,9 +72,19 @@ class User {
   }
 
   static async findById(id) {
-    const query = 'SELECT id, email, full_name, phone, role, business_name, tax_id, is_approved, is_blocked, profile_photo, created_at FROM users WHERE id = $1';
-    const result = await db.query(query, [id]);
-    return result.rows[0];
+    const queryWithProfilePhoto = 'SELECT id, email, full_name, phone, role, business_name, tax_id, is_approved, is_blocked, profile_photo, created_at FROM users WHERE id = $1';
+    try {
+      const result = await db.query(queryWithProfilePhoto, [id]);
+      return result.rows[0];
+    } catch (error) {
+      // Backward-compatibility for databases that do not yet have users.profile_photo
+      if (error?.code === '42703') {
+        const fallbackQuery = 'SELECT id, email, full_name, phone, role, business_name, tax_id, is_approved, is_blocked, created_at FROM users WHERE id = $1';
+        const result = await db.query(fallbackQuery, [id]);
+        return result.rows[0];
+      }
+      throw error;
+    }
   }
 
   static async verifyPassword(plainPassword, hashedPassword) {
@@ -142,8 +152,23 @@ class User {
       values = [full_name, phone, userId];
     }
     
-    const result = await db.query(query, values);
-    return result.rows[0];
+    try {
+      const result = await db.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      if (error?.code === '42703') {
+        const fallbackQuery = `
+          UPDATE users 
+          SET full_name = $1, phone = $2, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $3 
+          RETURNING id, email, full_name, phone, role, created_at
+        `;
+        const fallbackValues = [full_name, phone, userId];
+        const fallbackResult = await db.query(fallbackQuery, fallbackValues);
+        return fallbackResult.rows[0];
+      }
+      throw error;
+    }
   }
 }
 
