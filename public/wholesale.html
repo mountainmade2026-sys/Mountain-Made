@@ -489,6 +489,66 @@
             margin-top: 0.25rem;
             padding: 0.25rem 0;
         }
+
+        .wholesale-orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .wholesale-order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .wholesale-order-header-right {
+            text-align: right;
+        }
+
+        .wholesale-order-status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.9rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .wholesale-order-status-pending {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .wholesale-order-status-processing,
+        .wholesale-order-status-shipped {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+
+        .wholesale-order-status-delivered {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .wholesale-order-status-cancelled {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+
+        @media (max-width: 600px) {
+            .wholesale-order-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .wholesale-order-header-right {
+                text-align: left;
+            }
+        }
     </style>
 </head>
 <body>
@@ -503,7 +563,7 @@
             <ul class="navbar-menu">
                 <li><a href="#dashboard" class="active" id="wholesale-nav-dashboard" data-wholesale-view="dashboard">Dashboard</a></li>
                 <li><a href="#catalog" id="wholesale-nav-catalog" data-wholesale-view="catalog">Catalog</a></li>
-                <li><a href="/orders">Orders</a></li>
+                <li><a href="#orders" id="wholesale-nav-orders" data-wholesale-view="orders">Orders</a></li>
                 <li><a href="#wholesale-contact" data-wholesale-view="dashboard">Contact Us</a></li>
                 <li id="admin-link" class="hidden"><a href="/admin">Admin</a></li>
             </ul>
@@ -515,7 +575,7 @@
                 </div>
                 
                 <div id="user-menu" class="hidden flex gap-2" style="align-items: center;">
-                    <a href="/orders" class="icon-button" title="My Orders">
+                    <a href="#orders" class="icon-button" title="My Orders" data-wholesale-view="orders">
                         <i class="fas fa-shopping-bag"></i>
                     </a>
                     <a href="/cart" class="icon-button" title="Shopping Cart">
@@ -602,7 +662,7 @@
                 <div class="action-card">
                     <h3><i class="fas fa-history"></i> Order History</h3>
                     <p>Track your past and current orders, download invoices, and manage returns with ease.</p>
-                    <a href="/orders" class="btn btn-outline">View Orders</a>
+                    <a href="#orders" class="btn btn-outline" data-wholesale-view="orders">View Orders</a>
                 </div>
             </div>
 
@@ -631,6 +691,12 @@
                 </div>
 
                 <div id="wholesale-catalog-results" class="wholesale-catalog-grid"></div>
+            </section>
+
+            <section class="wholesale-section wholesale-orders-block hidden" id="wholesale-orders">
+                <h2>Order History</h2>
+                <p style="margin:0 0 1.25rem; color:#64748b;">Review your wholesale orders, status updates, and totals.</p>
+                <div id="wholesale-orders-list" class="wholesale-orders-list"></div>
             </section>
 
             <!-- Important Information -->
@@ -737,7 +803,7 @@
                 <h3>Wholesale Services</h3>
                 <ul>
                     <li><a href="#catalog" data-wholesale-view="catalog">Product Catalog</a></li>
-                    <li><a href="/orders">Order Management</a></li>
+                    <li><a href="#orders" data-wholesale-view="orders">Order Management</a></li>
                     <li><a href="/cart">Shopping Cart</a></li>
                     <li><a href="#">Bulk Pricing</a></li>
                 </ul>
@@ -844,30 +910,45 @@
             filteredProducts: []
         };
 
+        let wholesaleOrdersLoaded = false;
+        let wholesaleOrdersRefreshInterval = null;
+
         function switchWholesaleView(view) {
             const dashboardBlocks = document.querySelectorAll('.wholesale-dashboard-block');
             const catalogBlocks = document.querySelectorAll('.wholesale-catalog-block');
+            const ordersBlocks = document.querySelectorAll('.wholesale-orders-block');
             const dashboardNav = document.getElementById('wholesale-nav-dashboard');
             const catalogNav = document.getElementById('wholesale-nav-catalog');
+            const ordersNav = document.getElementById('wholesale-nav-orders');
 
             const showCatalog = view === 'catalog';
+            const showOrders = view === 'orders';
 
             dashboardBlocks.forEach(block => {
-                block.classList.toggle('hidden', showCatalog);
+                block.classList.toggle('hidden', showCatalog || showOrders);
             });
 
             catalogBlocks.forEach(block => {
                 block.classList.toggle('hidden', !showCatalog);
             });
 
-            if (dashboardNav) dashboardNav.classList.toggle('active', !showCatalog);
+            ordersBlocks.forEach(block => {
+                block.classList.toggle('hidden', !showOrders);
+            });
+
+            if (dashboardNav) dashboardNav.classList.toggle('active', !showCatalog && !showOrders);
             if (catalogNav) catalogNav.classList.toggle('active', showCatalog);
+            if (ordersNav) ordersNav.classList.toggle('active', showOrders);
+
+            if (showOrders) {
+                loadWholesaleOrders();
+            }
         }
 
         function initializeWholesaleViewRouting() {
             const routeByHash = () => {
                 const hash = (window.location.hash || '').toLowerCase();
-                const view = hash === '#catalog' ? 'catalog' : 'dashboard';
+                const view = hash === '#catalog' ? 'catalog' : (hash === '#orders' ? 'orders' : 'dashboard');
                 switchWholesaleView(view);
             };
 
@@ -880,6 +961,10 @@
                         e.preventDefault();
                         window.location.hash = 'catalog';
                         switchWholesaleView('catalog');
+                    } else if (targetView === 'orders') {
+                        e.preventDefault();
+                        window.location.hash = 'orders';
+                        switchWholesaleView('orders');
                     } else if (targetView === 'dashboard') {
                         e.preventDefault();
                         window.location.hash = 'dashboard';
@@ -890,6 +975,113 @@
 
             window.addEventListener('hashchange', routeByHash);
             routeByHash();
+        }
+
+        function getWholesaleOrderStatusText(status) {
+            if (!status) return 'Order Pending';
+            switch (status) {
+                case 'pending':
+                    return 'Order Pending';
+                case 'processing':
+                    return 'Order Confirmed';
+                case 'shipped':
+                    return 'Shipped';
+                case 'delivered':
+                    return 'Delivered';
+                case 'cancelled':
+                    return 'Rejected by owner';
+                default:
+                    return status;
+            }
+        }
+
+        function getWholesaleOrderStatusClass(status) {
+            switch (status) {
+                case 'pending':
+                    return 'wholesale-order-status-badge wholesale-order-status-pending';
+                case 'processing':
+                    return 'wholesale-order-status-badge wholesale-order-status-processing';
+                case 'shipped':
+                    return 'wholesale-order-status-badge wholesale-order-status-shipped';
+                case 'delivered':
+                    return 'wholesale-order-status-badge wholesale-order-status-delivered';
+                case 'cancelled':
+                    return 'wholesale-order-status-badge wholesale-order-status-cancelled';
+                default:
+                    return 'wholesale-order-status-badge';
+            }
+        }
+
+        async function loadWholesaleOrders() {
+            const container = document.getElementById('wholesale-orders-list');
+            if (!container) return;
+
+            try {
+                const data = await api.get('/orders');
+                const orders = data.orders || [];
+
+                if (!orders.length) {
+                    container.innerHTML = `
+                        <div class="card">
+                            <div class="card-content text-center">
+                                <p>You have no wholesale orders yet</p>
+                                <a href="#catalog" class="btn btn-primary mt-2" data-wholesale-view="catalog">Browse Catalog</a>
+                            </div>
+                        </div>
+                    `;
+                    wholesaleOrdersLoaded = true;
+                    return;
+                }
+
+                container.innerHTML = orders.map(order => `
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="wholesale-order-header" style="margin-bottom: 1rem;">
+                                <div>
+                                    <strong>Order #${order.order_number}</strong>
+                                    <p style="color: var(--text-light); margin-top: 0.25rem;">${formatDate(order.created_at)}</p>
+                                </div>
+                                <div class="wholesale-order-header-right">
+                                    <span class="${getWholesaleOrderStatusClass(order.status)}">${getWholesaleOrderStatusText(order.status)}</span>
+                                    <p style="margin-top: 0.5rem; font-size: 1.25rem; font-weight: 700; color: var(--primary);">${formatCurrency(order.total_amount)}</p>
+                                </div>
+                            </div>
+                            <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                                <p style="margin: 0 0 0.5rem; font-weight: 600; color: var(--primary);">
+                                    Status: <span class="${getWholesaleOrderStatusClass(order.status)}" style="margin-left: 0.25rem;">${getWholesaleOrderStatusText(order.status)}</span>
+                                </p>
+                                <strong style="display: block; margin-bottom: 0.5rem;">Items:</strong>
+                                ${(order.items || []).map(item => `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                                        <span>${item.product_name} x ${item.quantity}</span>
+                                        <span>${formatCurrency(item.subtotal)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                if (!wholesaleOrdersLoaded && !wholesaleOrdersRefreshInterval) {
+                    const refreshDelay = window.performanceTuning
+                        ? window.performanceTuning.getAdaptiveInterval(20000, {
+                            lowMultiplier: 2,
+                            highMultiplier: 0.75,
+                            min: 12000,
+                            max: 60000
+                        })
+                        : 20000;
+
+                    wholesaleOrdersRefreshInterval = setInterval(() => {
+                        loadWholesaleOrders().catch(err => console.error('Wholesale orders refresh error:', err));
+                    }, refreshDelay);
+                }
+
+                wholesaleOrdersLoaded = true;
+            } catch (error) {
+                console.error('Failed to load wholesale orders:', error);
+                container.innerHTML = '<div class="card"><div class="card-content text-center"><p>Failed to load orders. Please refresh and try again.</p></div></div>';
+            }
         }
 
         function getPrimaryProductImage(product) {
