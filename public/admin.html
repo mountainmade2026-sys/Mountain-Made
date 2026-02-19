@@ -2136,7 +2136,7 @@
                                 <input type="file" id="backup-folder-picker" webkitdirectory directory style="display: none;" />
                             </div>
                             <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">
-                                Select a folder from your computer to reuse its name, or type a custom name. We will create/use a folder with that name on the selected drive.
+                                Select a folder from your computer to reuse its name, or type a custom name. This does <strong>not</strong> write to your local PC path directly; backups are created on server storage under the selected drive/path.
                                 Leave empty to use the default <strong>mountain_made_backups</strong> folder.
                             </small>
                         </div>
@@ -7309,6 +7309,18 @@
         
         let availableDrives = [];
 
+        function getPathSeparatorForDrive(driveName) {
+            return driveName === '/' ? '/' : '\\';
+        }
+
+        function joinBackupPath(driveName, folderName) {
+            const effectiveFolder = folderName || 'mountain_made_backups';
+            if (driveName === '/') {
+                return `/${effectiveFolder}`;
+            }
+            return `${driveName}\\${effectiveFolder}`;
+        }
+
         window.loadDrives = async function loadDrives() {
             try {
                 const response = await api.get('/backup/drives');
@@ -7363,8 +7375,9 @@
                 return;
             }
 
-            const effectiveFolder = folderPath || 'mountain_made_backups';
-            const fullPath = drive + '\\' + effectiveFolder + '\\<backup-file>.sql';
+            const basePath = joinBackupPath(drive, folderPath);
+            const sep = getPathSeparatorForDrive(drive);
+            const fullPath = `${basePath}${sep}<backup-file>.sql`;
             preview.textContent = fullPath;
         }
 
@@ -7394,8 +7407,8 @@
                 return;
             }
 
-            const effectiveFolder = folderPath || 'mountain_made_backups';
-            if (await showConfirmDialog(`Create database backup at ${drive}\\${effectiveFolder}?`, {
+            const basePath = joinBackupPath(drive, folderPath);
+            if (await showConfirmDialog(`Create database backup at ${basePath}?`, {
                 title: 'Create Database Backup',
                 confirmText: 'Create Backup'
             })) {
@@ -7405,7 +7418,9 @@
 
                     const response = await api.post('/backup/create', { drive, folderPath });
 
-                    window.showSuccessModal(`Backup created successfully!<br>File: <b>${response.backup.filename}</b><br>Size: <b>${response.backup.fileSizeMB} MB</b>`);
+                    const backupId = response?.backup?.id;
+                    const backupPath = response?.backup?.filePath || basePath;
+                    window.showSuccessModal(`Backup created successfully!<br>File: <b>${response.backup.filename}</b><br>Size: <b>${response.backup.fileSizeMB} MB</b><br>Server path: <code>${backupPath}</code><br><br><button class="btn btn-primary btn-sm" onclick="downloadBackup(${backupId})"><i class='fas fa-download'></i> Download Backup</button>`);
                     // Refresh backup history
                     await loadBackupHistory();
 
@@ -7450,6 +7465,7 @@
                             <td>${statusBadge}</td>
                             <td>${backup.createdBy || '-'}</td>
                             <td>
+                                ${backup.canDownload ? `<button class="btn btn-secondary btn-sm" onclick="downloadBackup(${backup.id})" title="Download Backup"><i class="fas fa-download"></i></button>` : ''}
                                 <button class="btn btn-danger btn-sm" onclick="deleteBackupRecord(${backup.id})" title="Delete Record">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -7461,6 +7477,42 @@
             } catch (error) {
                 console.error('Error loading backup history:', error);
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--error);">Failed to load backup history</td></tr>';
+            }
+        }
+
+        window.downloadBackup = async function downloadBackup(backupId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/backup/${backupId}/download`, {
+                    method: 'GET',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    let message = 'Failed to download backup';
+                    try {
+                        const errorData = await response.json();
+                        message = errorData.error || message;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
+
+                const disposition = response.headers.get('content-disposition') || '';
+                const filenameMatch = disposition.match(/filename="?([^\";]+)"?/i);
+                const filename = filenameMatch ? filenameMatch[1] : `backup-${backupId}.sql`;
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = filename;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                showAlert(error.message || 'Download failed', 'error');
             }
         }
 

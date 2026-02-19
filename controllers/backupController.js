@@ -297,6 +297,7 @@ exports.getAllBackups = async (req, res) => {
       drive: backup.drive,
       fileSizeMB: (backup.file_size / (1024 ** 2)).toFixed(2),
       status: backup.status,
+      canDownload: backup.status === 'completed',
       createdBy: backup.created_by_name,
       createdAt: backup.created_at,
       errorMessage: backup.error_message
@@ -306,6 +307,31 @@ exports.getAllBackups = async (req, res) => {
   } catch (error) {
     console.error('Get backups error:', error);
     res.status(500).json({ error: 'Failed to get backups' });
+  }
+};
+
+// Download backup file by backup ID
+exports.downloadBackup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const backup = await Backup.getById(id);
+
+    if (!backup) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    const filePath = backup.file_path;
+    if (!filePath || !fsSync.existsSync(filePath)) {
+      return res.status(404).json({
+        error: 'Backup file is not available on server storage. Create a new backup and download it immediately.'
+      });
+    }
+
+    const filename = backup.filename || `backup-${backup.id}.sql`;
+    return res.download(filePath, filename);
+  } catch (error) {
+    console.error('Download backup error:', error);
+    return res.status(500).json({ error: 'Failed to download backup file' });
   }
 };
 

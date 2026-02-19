@@ -16,6 +16,9 @@ router.post('/create', backupController.createBackup);
 // Get all backups
 router.get('/history', backupController.getAllBackups);
 
+// Download backup file
+router.get('/:id/download', backupController.downloadBackup);
+
 // Delete a backup record
 router.delete('/:id', backupController.deleteBackup);
 
