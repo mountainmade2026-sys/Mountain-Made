@@ -10,6 +10,12 @@ router.use(authenticateToken, adminCheck);
 // Get available drives
 router.get('/drives', backupController.getDrives);
 
+// Get automatic backup scheduler settings
+router.get('/auto-settings', backupController.getAutoBackupSettings);
+
+// Update automatic backup scheduler settings
+router.post('/auto-settings', backupController.updateAutoBackupSettings);
+
 // Create a new backup
 router.post('/create', backupController.createBackup);
 

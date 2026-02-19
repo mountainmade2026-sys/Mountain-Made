@@ -13,15 +13,211 @@ let isAutoBackupRunning = false;
 
 const toBool = (value) => String(value || '').trim().toLowerCase() === 'true';
 
-const getAutoBackupIntervalMs = () => {
-  const minutesRaw = Number(process.env.AUTO_BACKUP_INTERVAL_MINUTES || 0);
-  if (Number.isFinite(minutesRaw) && minutesRaw > 0) {
-    return Math.max(5, minutesRaw) * 60 * 1000;
+const AUTO_BACKUP_SETTING_KEYS = [
+  'auto_backup_enabled',
+  'auto_backup_frequency',
+  'auto_backup_time',
+  'auto_backup_day_of_month',
+  'auto_backup_keep_months',
+  'auto_backup_drive',
+  'auto_backup_folder',
+  'auto_backup_last_run_at'
+];
+
+const AUTO_BACKUP_DEFAULTS = {
+  enabled: toBool(process.env.AUTO_BACKUP_ENABLED),
+  frequency: (process.env.AUTO_BACKUP_FREQUENCY || 'daily').toLowerCase() === 'monthly' ? 'monthly' : 'daily',
+  time: process.env.AUTO_BACKUP_TIME || '02:00',
+  dayOfMonth: Number(process.env.AUTO_BACKUP_DAY_OF_MONTH || 1),
+  keepMonths: Number(process.env.AUTO_BACKUP_KEEP_MONTHS || 3),
+  drive: process.env.AUTO_BACKUP_DRIVE || (isWindows ? 'C:' : '/'),
+  folder: process.env.AUTO_BACKUP_FOLDER || 'mountain_made_backups',
+  lastRunAt: ''
+};
+
+const normalizeAutoBackupTime = (value) => {
+  const text = String(value || '').trim();
+  if (!/^\d{2}:\d{2}$/.test(text)) {
+    return '02:00';
   }
 
-  const hoursRaw = Number(process.env.AUTO_BACKUP_INTERVAL_HOURS || 24);
-  const safeHours = Number.isFinite(hoursRaw) && hoursRaw > 0 ? hoursRaw : 24;
-  return safeHours * 60 * 60 * 1000;
+  const [hours, minutes] = text.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return '02:00';
+  }
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return '02:00';
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const parseMonthPositiveInt = (value, fallback) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.max(1, Math.floor(parsed));
+};
+
+const normalizeAutoBackupSettings = (raw = {}) => {
+  const frequency = String(raw.frequency || AUTO_BACKUP_DEFAULTS.frequency).toLowerCase() === 'monthly' ? 'monthly' : 'daily';
+  const normalized = {
+    enabled: typeof raw.enabled === 'boolean' ? raw.enabled : toBool(raw.enabled),
+    frequency,
+    time: normalizeAutoBackupTime(raw.time || AUTO_BACKUP_DEFAULTS.time),
+    dayOfMonth: Math.min(31, Math.max(1, Math.floor(Number(raw.dayOfMonth || AUTO_BACKUP_DEFAULTS.dayOfMonth) || 1))),
+    keepMonths: parseMonthPositiveInt(raw.keepMonths || AUTO_BACKUP_DEFAULTS.keepMonths, 3),
+    drive: String(raw.drive || AUTO_BACKUP_DEFAULTS.drive || (isWindows ? 'C:' : '/')).trim() || (isWindows ? 'C:' : '/'),
+    folder: String(raw.folder || AUTO_BACKUP_DEFAULTS.folder || 'mountain_made_backups').trim() || 'mountain_made_backups',
+    lastRunAt: String(raw.lastRunAt || '').trim()
+  };
+
+  if (normalized.frequency !== 'monthly') {
+    normalized.dayOfMonth = 1;
+  }
+
+  return normalized;
+};
+
+const upsertSiteSetting = async (key, value) => {
+  await db.query(
+    `
+      INSERT INTO site_settings (setting_key, setting_value)
+      VALUES ($1, $2)
+      ON CONFLICT (setting_key)
+      DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP
+    `,
+    [key, String(value ?? '')]
+  );
+};
+
+const saveAutoBackupSettings = async (settings) => {
+  const normalized = normalizeAutoBackupSettings(settings);
+
+  await Promise.all([
+    upsertSiteSetting('auto_backup_enabled', normalized.enabled ? 'true' : 'false'),
+    upsertSiteSetting('auto_backup_frequency', normalized.frequency),
+    upsertSiteSetting('auto_backup_time', normalized.time),
+    upsertSiteSetting('auto_backup_day_of_month', String(normalized.dayOfMonth)),
+    upsertSiteSetting('auto_backup_keep_months', String(normalized.keepMonths)),
+    upsertSiteSetting('auto_backup_drive', normalized.drive),
+    upsertSiteSetting('auto_backup_folder', normalized.folder),
+    upsertSiteSetting('auto_backup_last_run_at', normalized.lastRunAt || '')
+  ]);
+
+  return normalized;
+};
+
+const loadAutoBackupSettings = async () => {
+  try {
+    const result = await db.query(
+      `SELECT setting_key, setting_value FROM site_settings WHERE setting_key = ANY($1::text[])`,
+      [AUTO_BACKUP_SETTING_KEYS]
+    );
+
+    const mapped = {};
+    for (const row of result.rows || []) {
+      mapped[row.setting_key] = row.setting_value;
+    }
+
+    return normalizeAutoBackupSettings({
+      enabled: mapped.auto_backup_enabled ?? AUTO_BACKUP_DEFAULTS.enabled,
+      frequency: mapped.auto_backup_frequency ?? AUTO_BACKUP_DEFAULTS.frequency,
+      time: mapped.auto_backup_time ?? AUTO_BACKUP_DEFAULTS.time,
+      dayOfMonth: mapped.auto_backup_day_of_month ?? AUTO_BACKUP_DEFAULTS.dayOfMonth,
+      keepMonths: mapped.auto_backup_keep_months ?? AUTO_BACKUP_DEFAULTS.keepMonths,
+      drive: mapped.auto_backup_drive ?? AUTO_BACKUP_DEFAULTS.drive,
+      folder: mapped.auto_backup_folder ?? AUTO_BACKUP_DEFAULTS.folder,
+      lastRunAt: mapped.auto_backup_last_run_at ?? AUTO_BACKUP_DEFAULTS.lastRunAt
+    });
+  } catch (error) {
+    console.warn('Auto backup settings load warning:', error.message);
+    return normalizeAutoBackupSettings(AUTO_BACKUP_DEFAULTS);
+  }
+};
+
+const isSameDate = (a, b) => (
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
+);
+
+const isSameMonth = (a, b) => (
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth()
+);
+
+const shouldRunAutoBackupNow = (settings, now = new Date()) => {
+  if (!settings.enabled) {
+    return false;
+  }
+
+  const [hours, minutes] = String(settings.time || '02:00').split(':').map(Number);
+  const lastRunAt = settings.lastRunAt ? new Date(settings.lastRunAt) : null;
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return false;
+  }
+
+  const scheduled = new Date(now);
+  scheduled.setSeconds(0, 0);
+
+  if (settings.frequency === 'monthly') {
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const day = Math.min(lastDay, Math.max(1, Number(settings.dayOfMonth) || 1));
+    scheduled.setDate(day);
+  }
+
+  scheduled.setHours(hours, minutes, 0, 0);
+
+  if (now < scheduled) {
+    return false;
+  }
+
+  if (!(lastRunAt instanceof Date) || Number.isNaN(lastRunAt.getTime())) {
+    return true;
+  }
+
+  if (settings.frequency === 'monthly') {
+    return !isSameMonth(lastRunAt, now);
+  }
+
+  return !isSameDate(lastRunAt, now);
+};
+
+const applyBackupRetention = async (keepMonths) => {
+  const safeKeepMonths = Math.max(1, Math.floor(Number(keepMonths) || 1));
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - safeKeepMonths);
+
+  const result = await db.query(
+    `
+      SELECT id, file_path
+      FROM backups
+      WHERE status = 'completed' AND created_at < $1
+      ORDER BY created_at ASC
+    `,
+    [cutoff.toISOString()]
+  );
+
+  for (const row of result.rows || []) {
+    const filePath = row.file_path;
+    try {
+      if (filePath && fsSync.existsSync(filePath)) {
+        await fs.unlink(filePath);
+      }
+    } catch (error) {
+      console.warn(`Failed to delete old backup file ${filePath}:`, error.message);
+    }
+
+    try {
+      await Backup.deleteById(row.id);
+    } catch (error) {
+      console.warn(`Failed to delete old backup record ${row.id}:`, error.message);
+    }
+  }
 };
 
 function toSqlLiteral(value) {
@@ -388,8 +584,9 @@ exports.createBackup = async (req, res) => {
 };
 
 exports.runAutomatedBackup = async () => {
-  const autoDrive = process.env.AUTO_BACKUP_DRIVE || (isWindows ? 'C:' : '/');
-  const autoFolder = process.env.AUTO_BACKUP_FOLDER || 'mountain_made_backups';
+  const settings = await loadAutoBackupSettings();
+  const autoDrive = settings.drive || AUTO_BACKUP_DEFAULTS.drive;
+  const autoFolder = settings.folder || AUTO_BACKUP_DEFAULTS.folder;
   return createBackupInternal({
     drive: autoDrive,
     folderPath: autoFolder,
@@ -397,16 +594,44 @@ exports.runAutomatedBackup = async () => {
   });
 };
 
-exports.startAutoBackupScheduler = () => {
-  if (!toBool(process.env.AUTO_BACKUP_ENABLED)) {
-    return;
+exports.getAutoBackupSettings = async (req, res) => {
+  try {
+    const settings = await loadAutoBackupSettings();
+    res.json({ settings });
+  } catch (error) {
+    console.error('Get auto backup settings error:', error);
+    res.status(500).json({ error: 'Failed to load auto backup settings' });
   }
+};
 
+exports.updateAutoBackupSettings = async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const normalized = normalizeAutoBackupSettings({
+      enabled: payload.enabled,
+      frequency: payload.frequency,
+      time: payload.time,
+      dayOfMonth: payload.dayOfMonth,
+      keepMonths: payload.keepMonths,
+      drive: payload.drive,
+      folder: payload.folder,
+      lastRunAt: payload.lastRunAt
+    });
+
+    const saved = await saveAutoBackupSettings(normalized);
+    res.json({ success: true, message: 'Auto backup settings saved.', settings: saved });
+  } catch (error) {
+    console.error('Update auto backup settings error:', error);
+    res.status(500).json({ error: 'Failed to save auto backup settings.' });
+  }
+};
+
+exports.startAutoBackupScheduler = () => {
   if (autoBackupTimer) {
     return;
   }
 
-  const intervalMs = getAutoBackupIntervalMs();
+  const intervalMs = Math.max(30, Number(process.env.AUTO_BACKUP_CHECK_INTERVAL_SECONDS || 60)) * 1000;
 
   const runJob = async () => {
     if (isAutoBackupRunning) {
@@ -415,9 +640,23 @@ exports.startAutoBackupScheduler = () => {
 
     isAutoBackupRunning = true;
     try {
-      const result = await exports.runAutomatedBackup();
+      const settings = await loadAutoBackupSettings();
+      if (!shouldRunAutoBackupNow(settings, new Date())) {
+        return;
+      }
+
+      const result = await createBackupInternal({
+        drive: settings.drive,
+        folderPath: settings.folder,
+        createdByUserId: null
+      });
+
       const fileName = result?.backup?.filename || 'unknown';
-      console.log(`✓ Auto backup completed: ${fileName}`);
+      const lastRunAt = new Date().toISOString();
+      await saveAutoBackupSettings({ ...settings, lastRunAt });
+      await applyBackupRetention(settings.keepMonths);
+
+      console.log(`✓ Auto backup completed: ${fileName} (${settings.frequency} @ ${settings.time})`);
     } catch (error) {
       console.error('Auto backup failed:', error.message || error);
     } finally {
@@ -431,12 +670,10 @@ exports.startAutoBackupScheduler = () => {
     autoBackupTimer.unref();
   }
 
-  if (toBool(process.env.AUTO_BACKUP_RUN_ON_STARTUP)) {
-    runJob();
-  }
+  runJob();
 
-  const intervalMinutes = Math.round(intervalMs / 60000);
-  console.log(`✓ Auto backup scheduler enabled (every ${intervalMinutes} minutes)`);
+  const intervalSeconds = Math.round(intervalMs / 1000);
+  console.log(`✓ Auto backup scheduler enabled (checks every ${intervalSeconds} seconds)`);
 };
 
 // Get all backups

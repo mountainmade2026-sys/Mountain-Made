@@ -2160,6 +2160,65 @@
                 </div>
 
                 <div class="data-table-container" style="margin-top: 2rem;">
+                    <div class="table-header" style="background: #f8fafc; border-bottom: 1px solid #dbeafe;">
+                        <h3><i class="fas fa-clock"></i> Automatic Backup Schedule</h3>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label class="form-label" for="auto-backup-enabled">Enable Automatic Backup</label>
+                                <select id="auto-backup-enabled" class="form-input">
+                                    <option value="true">Enabled</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="auto-backup-frequency">Frequency</label>
+                                <select id="auto-backup-frequency" class="form-input" onchange="toggleAutoBackupFrequencyFields()">
+                                    <option value="daily">Daily</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="auto-backup-time">Backup Time</label>
+                                <input id="auto-backup-time" type="time" class="form-input" value="02:00">
+                            </div>
+                            <div id="auto-backup-day-wrap" style="display:none;">
+                                <label class="form-label" for="auto-backup-day">Day of Month</label>
+                                <input id="auto-backup-day" type="number" min="1" max="31" class="form-input" value="1">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label class="form-label" for="auto-backup-keep-months">Keep Backups For (Months)</label>
+                                <input id="auto-backup-keep-months" type="number" min="1" max="36" class="form-input" value="3">
+                            </div>
+                            <div>
+                                <label class="form-label" for="auto-backup-drive">Auto Backup Drive</label>
+                                <select id="auto-backup-drive" class="form-input">
+                                    <option value="/">/</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="auto-backup-folder">Auto Backup Folder</label>
+                                <input id="auto-backup-folder" type="text" class="form-input" placeholder="mountain_made_backups" value="mountain_made_backups">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+                            <button class="btn btn-primary" onclick="saveAutoBackupSettings()" id="save-auto-backup-btn">
+                                <i class="fas fa-save"></i> Save Auto Backup Settings
+                            </button>
+                            <button class="btn btn-secondary" onclick="loadAutoBackupSettings()">
+                                <i class="fas fa-sync-alt"></i> Reload Settings
+                            </button>
+                            <small id="auto-backup-status" style="color: var(--text-muted);">Configure daily/monthly automatic backups.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table-container" style="margin-top: 2rem;">
                     <div class="table-header">
                         <h3><i class="fas fa-history"></i> Backup History</h3>
                         <button class="btn btn-secondary btn-sm" onclick="loadBackupHistory()">
@@ -7326,6 +7385,122 @@
             return `/api/backup/${backupId}/download`;
         }
 
+        function setAutoBackupStatus(message, type = 'info') {
+            const statusEl = document.getElementById('auto-backup-status');
+            if (!statusEl) return;
+
+            const colors = {
+                info: 'var(--text-muted)',
+                success: 'var(--success)',
+                error: 'var(--danger)'
+            };
+
+            statusEl.textContent = message;
+            statusEl.style.color = colors[type] || colors.info;
+        }
+
+        window.toggleAutoBackupFrequencyFields = function toggleAutoBackupFrequencyFields() {
+            const frequency = document.getElementById('auto-backup-frequency')?.value || 'daily';
+            const dayWrap = document.getElementById('auto-backup-day-wrap');
+            if (!dayWrap) return;
+
+            dayWrap.style.display = frequency === 'monthly' ? 'block' : 'none';
+        }
+
+        function populateAutoBackupDriveOptions() {
+            const driveSelect = document.getElementById('auto-backup-drive');
+            if (!driveSelect) return;
+
+            const currentValue = driveSelect.value;
+            const options = (availableDrives || []).map(drive => `<option value="${drive.name}">${drive.name}</option>`);
+            if (options.length === 0) {
+                options.push('<option value="/">/</option>');
+            }
+
+            driveSelect.innerHTML = options.join('');
+            if (currentValue && Array.from(driveSelect.options).some(opt => opt.value === currentValue)) {
+                driveSelect.value = currentValue;
+            }
+        }
+
+        window.loadAutoBackupSettings = async function loadAutoBackupSettings() {
+            try {
+                setAutoBackupStatus('Loading automatic backup settings...', 'info');
+                const response = await api.get('/backup/auto-settings');
+                const settings = response?.settings || {};
+
+                const enabled = String(settings.enabled) === 'true' || settings.enabled === true;
+                document.getElementById('auto-backup-enabled').value = enabled ? 'true' : 'false';
+                document.getElementById('auto-backup-frequency').value = settings.frequency === 'monthly' ? 'monthly' : 'daily';
+                document.getElementById('auto-backup-time').value = settings.time || '02:00';
+                document.getElementById('auto-backup-day').value = Number(settings.dayOfMonth || 1);
+                document.getElementById('auto-backup-keep-months').value = Number(settings.keepMonths || 3);
+
+                populateAutoBackupDriveOptions();
+                const driveSelect = document.getElementById('auto-backup-drive');
+                const resolvedDrive = settings.drive || (availableDrives[0]?.name || '/');
+                if (driveSelect) {
+                    if (!Array.from(driveSelect.options).some(opt => opt.value === resolvedDrive)) {
+                        const dynamicOption = document.createElement('option');
+                        dynamicOption.value = resolvedDrive;
+                        dynamicOption.textContent = resolvedDrive;
+                        driveSelect.appendChild(dynamicOption);
+                    }
+                    driveSelect.value = resolvedDrive;
+                }
+
+                document.getElementById('auto-backup-folder').value = settings.folder || 'mountain_made_backups';
+                toggleAutoBackupFrequencyFields();
+
+                const scheduleLabel = settings.frequency === 'monthly'
+                    ? `Monthly on day ${settings.dayOfMonth || 1} at ${settings.time || '02:00'}`
+                    : `Daily at ${settings.time || '02:00'}`;
+
+                setAutoBackupStatus(`Loaded. ${enabled ? 'Enabled' : 'Disabled'} • ${scheduleLabel} • Keep ${settings.keepMonths || 3} month(s).`, 'success');
+            } catch (error) {
+                console.error('Load auto backup settings error:', error);
+                setAutoBackupStatus(error.message || 'Failed to load auto backup settings.', 'error');
+            }
+        }
+
+        window.saveAutoBackupSettings = async function saveAutoBackupSettings() {
+            const saveBtn = document.getElementById('save-auto-backup-btn');
+            try {
+                const payload = {
+                    enabled: document.getElementById('auto-backup-enabled').value === 'true',
+                    frequency: document.getElementById('auto-backup-frequency').value,
+                    time: document.getElementById('auto-backup-time').value || '02:00',
+                    dayOfMonth: Number(document.getElementById('auto-backup-day').value || 1),
+                    keepMonths: Number(document.getElementById('auto-backup-keep-months').value || 3),
+                    drive: document.getElementById('auto-backup-drive').value || '/',
+                    folder: (document.getElementById('auto-backup-folder').value || '').trim() || 'mountain_made_backups'
+                };
+
+                if (payload.frequency !== 'monthly') {
+                    payload.dayOfMonth = 1;
+                }
+
+                if (saveBtn) {
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                }
+
+                await api.post('/backup/auto-settings', payload);
+                setAutoBackupStatus('Automatic backup settings saved successfully.', 'success');
+                showAlert('Automatic backup settings saved.', 'success');
+                await loadAutoBackupSettings();
+            } catch (error) {
+                console.error('Save auto backup settings error:', error);
+                setAutoBackupStatus(error.message || 'Failed to save automatic backup settings.', 'error');
+                showAlert(error.message || 'Failed to save automatic backup settings.', 'error');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Auto Backup Settings';
+                }
+            }
+        }
+
         window.loadDrives = async function loadDrives() {
             try {
                 const response = await api.get('/backup/drives');
@@ -7338,6 +7513,8 @@
                             `<option value="${drive.name}">${drive.name} (${drive.freeSpaceGB} GB free of ${drive.totalSpaceGB} GB)</option>`
                         ).join('');
                 }
+
+                populateAutoBackupDriveOptions();
             } catch (error) {
                 console.error('Error loading drives:', error);
                 showAlert('Failed to load drives: ' + error.message, 'error');
@@ -7598,6 +7775,7 @@
             if (sectionId === 'database-backup') {
                 loadDrives();
                 loadBackupHistory();
+                loadAutoBackupSettings();
             }
 
             if (sectionId === 'messages') {
