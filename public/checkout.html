@@ -848,6 +848,8 @@
             if (!modal || !content) return;
 
             const orderNumber = order?.order_number || '—';
+            const ordersUrl = auth.isWholesale && auth.isWholesale() ? '/wholesale#orders' : '/orders';
+            const catalogUrl = auth.isWholesale && auth.isWholesale() ? '/wholesale#catalog' : '/products';
 
             modal.classList.remove('hidden');
             content.innerHTML = `
@@ -860,10 +862,10 @@
                 <h3 class="order-modal-title">Order placed successfully!</h3>
                 <p class="order-modal-text">Thank you for your purchase. Your order number is <strong>${orderNumber}</strong>. You can track it anytime from the My Orders page.</p>
                 <div class="order-modal-actions">
-                    <button class="btn btn-primary" onclick="window.location.href='/orders'">
+                    <button class="btn btn-primary" onclick="window.location.href='${ordersUrl}'">
                         <i class="fas fa-box"></i> View My Orders
                     </button>
-                    <button class="btn btn-secondary" onclick="window.location.href='/products'">
+                    <button class="btn btn-secondary" onclick="window.location.href='${catalogUrl}'">
                         <i class="fas fa-store"></i> Continue Shopping
                     </button>
                 </div>

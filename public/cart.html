@@ -76,7 +76,7 @@
                         <strong>Total:</strong><strong id="cart-total" style="color: var(--primary);">₹0.00</strong>
                     </div>
                     <button id="checkout-btn" onclick="proceedToCheckout()" class="btn btn-primary" style="width: 100%;"><i class="fas fa-credit-card"></i> Proceed to Checkout</button>
-                    <a href="/products" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;"><i class="fas fa-store"></i> Continue Shopping</a>
+                    <a href="/products" id="continue-shopping-link" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;"><i class="fas fa-store"></i> Continue Shopping</a>
                 </div>
             </div>
         </div>
@@ -264,9 +264,10 @@
         const data = await cart.fetch();
         const container = document.getElementById('cart-items');
         if (!data || !data.cartItems || data.cartItems.length === 0) {
-            container.innerHTML = '<div class="card"><div class="card-content text-center"><p>Your cart is empty</p><a href="/products" class="btn btn-primary mt-2">Start Shopping</a></div></div>';
+            container.innerHTML = '<div class="card"><div class="card-content text-center"><p>Your cart is empty</p><a href="/products" class="btn btn-primary mt-2" data-continue-shopping>Start Shopping</a></div></div>';
             document.getElementById('cart-subtotal').textContent = '₹0.00';
             document.getElementById('cart-total').textContent = '₹0.00';
+            updateCartShoppingLinks();
             return;
         }
         container.innerHTML = data.cartItems.map(function(item) {
@@ -303,6 +304,13 @@
         }).join('');
         document.getElementById('cart-subtotal').textContent = formatCurrency(data.total);
         document.getElementById('cart-total').textContent = formatCurrency(data.total);
+    }
+
+    function updateCartShoppingLinks() {
+        const target = auth.isWholesale && auth.isWholesale() ? '/wholesale#catalog' : '/products';
+        document.querySelectorAll('#continue-shopping-link, [data-continue-shopping]').forEach(link => {
+            link.setAttribute('href', target);
+        });
     }
 
     async function updateQuantity(itemId, quantity) {
@@ -348,6 +356,7 @@
             await auth.checkAuth();
             // Update navigation links for user role
             auth.updateNavigationLinks();
+            updateCartShoppingLinks();
         } catch (err) {
             console.warn('Auth check failed on cart page:', err);
         }

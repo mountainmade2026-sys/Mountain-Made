@@ -398,6 +398,16 @@ const auth = {
       }
     });
 
+    // Update orders link for wholesale users
+    const ordersLinks = document.querySelectorAll('a[href="/orders"]');
+    ordersLinks.forEach(link => {
+      if (this.isWholesale()) {
+        link.setAttribute('href', '/wholesale#orders');
+      } else {
+        link.setAttribute('href', '/orders');
+      }
+    });
+
     // Update back button if it exists
     const backBtn = document.getElementById('back-btn');
     if (backBtn && !backBtn.hasAttribute('data-custom-back')) {
