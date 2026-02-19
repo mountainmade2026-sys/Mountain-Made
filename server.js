@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const database = require('./config/database');
@@ -94,6 +95,102 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Page-level access guard: keep wholesale and public experiences separated.
+// - Approved wholesale users are redirected away from public browsing pages.
+// - Non-wholesale users are redirected away from the wholesale portal.
+// Note: This only guards HTML page routes (not API endpoints).
+app.use((req, res, next) => {
+  try {
+    const method = String(req.method || '').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') return next();
+
+    const pathname = req.path || '/';
+    const wholesalePages = new Set(['/wholesale', '/wholesale.html']);
+    const publicOnlyPages = new Set([
+      '/',
+      '/index.html',
+      '/products',
+      '/products.html',
+      '/product-details',
+      '/product-details.html',
+      '/cart',
+      '/cart.html',
+      '/checkout',
+      '/checkout.html',
+      '/orders',
+      '/orders.html',
+      '/addresses',
+      '/addresses.html',
+      '/contact',
+      '/contact.html',
+      '/login',
+      '/login.html',
+      '/register',
+      '/register.html'
+    ]);
+
+    const isWholesalePage = wholesalePages.has(pathname);
+    const isPublicOnlyPage = publicOnlyPages.has(pathname);
+    if (!isWholesalePage && !isPublicOnlyPage) return next();
+
+    const sanitizeToken = (token) => {
+      if (!token) return null;
+      const value = String(token).trim().replace(/^"|"$/g, '');
+      return value || null;
+    };
+
+    const rawAuth = req.get('authorization') || req.get('Authorization') || '';
+    const bearerMatch = String(rawAuth).match(/^Bearer\s+(.+)$/i);
+    const headerToken = bearerMatch && bearerMatch[1] ? sanitizeToken(bearerMatch[1]) : sanitizeToken(rawAuth);
+    const cookieToken = sanitizeToken(req.cookies?.token);
+    const token = headerToken || cookieToken;
+
+    let claims = null;
+    if (token && process.env.JWT_SECRET) {
+      try {
+        claims = jwt.verify(token, process.env.JWT_SECRET);
+      } catch (_) {
+        claims = null;
+      }
+    }
+
+    const isBlocked = !!claims?.is_blocked;
+    const role = claims?.role;
+    const isApprovedWholesale = !isBlocked && role === 'wholesale' && !!claims?.is_approved;
+    const isAdmin = !isBlocked && (role === 'admin' || role === 'super_admin');
+
+    if (isWholesalePage) {
+      if (isApprovedWholesale || isAdmin) return next();
+
+      if (!claims) {
+        return res.redirect(302, `/login?redirect=${encodeURIComponent('/wholesale')}`);
+      }
+
+      if (role === 'wholesale' && !claims?.is_approved) {
+        return res.redirect(302, '/');
+      }
+
+      if (isBlocked) {
+        return res.redirect(302, '/login');
+      }
+
+      return res.redirect(302, '/');
+    }
+
+    if (isPublicOnlyPage) {
+      if (isApprovedWholesale) {
+        const sendToCatalog = pathname === '/products' || pathname === '/products.html' || pathname === '/product-details' || pathname === '/product-details.html';
+        return res.redirect(302, sendToCatalog ? '/wholesale#catalog' : '/wholesale');
+      }
+      return next();
+    }
+
+    return next();
+  } catch (err) {
+    return next();
+  }
+});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -351,10 +448,6 @@ app.get('/wholesale', (req, res) => {
 
 app.get('/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
-});
-
-app.get('/wholesale', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'wholesale.html'));
 });
 
 // Error handling middleware
