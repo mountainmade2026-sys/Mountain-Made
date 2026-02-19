@@ -1074,6 +1074,33 @@ function hideLoading(elementId) {
   }
 }
 
+function optimizeDynamicImages(root = document) {
+  const scope = root && root.querySelectorAll ? root : document;
+  const images = scope.querySelectorAll('img:not([data-image-optimized="true"])');
+
+  images.forEach((img) => {
+    const isCritical = !!img.closest('.hero, .search-section, .navbar-brand');
+
+    if (!img.getAttribute('decoding')) {
+      img.setAttribute('decoding', 'async');
+    }
+
+    if (!img.getAttribute('loading')) {
+      img.setAttribute('loading', isCritical ? 'eager' : 'lazy');
+    }
+
+    if (!img.style.aspectRatio) {
+      if (img.classList.contains('card-image') || img.classList.contains('carousel-item-image')) {
+        img.style.aspectRatio = '4 / 3';
+      } else if (img.classList.contains('category-image')) {
+        img.style.aspectRatio = '1 / 1';
+      }
+    }
+
+    img.setAttribute('data-image-optimized', 'true');
+  });
+}
+
 // Form Validation
 function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1115,6 +1142,7 @@ async function initApp() {
   
   await auth.checkAuth();
   await cart.fetch();
+  optimizeDynamicImages(document);
   
   // Setup logout button
   const logoutBtn = document.getElementById('logout-btn');
@@ -1243,6 +1271,7 @@ window.uploadProductImage = uploadProductImage;
 window.validateImageFile = validateImageFile;
 window.loadSiteLogo = loadSiteLogo;
 window.openProfileModal = openProfileModal;
+window.optimizeDynamicImages = optimizeDynamicImages;
 // Restore database handler for admin.html
 window.handleRestoreDatabase = async function(event) {
   event.preventDefault();

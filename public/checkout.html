@@ -67,9 +67,14 @@
                 <h2>Checkout</h2>
             </div>
         </div>
+        <div class="checkout-steps" aria-label="Checkout progress">
+            <div class="checkout-step is-active"><span class="step-index">1</span><span>Shipping</span></div>
+            <div class="checkout-step is-active"><span class="step-index">2</span><span>Payment</span></div>
+            <div class="checkout-step"><span class="step-index">3</span><span>Review</span></div>
+        </div>
         <div class="checkout-layout">
             <form id="checkout-form" novalidate>
-                <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card checkout-card" style="margin-bottom: 1.5rem;">
                     <div class="card-content">
                         <div class="checkout-header-row">
                             <h3>Shipping Information</h3>
@@ -83,11 +88,11 @@
                         <div id="address-form" style="display: none;">
                             <div class="form-group">
                                 <label class="form-label">Full Name</label>
-                                <input type="text" id="name" class="form-input" required>
+                                <input type="text" id="name" class="form-input" required data-validate data-label="Full Name">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Address Line 1</label>
-                                <input type="text" id="address" class="form-input" required>
+                                <input type="text" id="address" class="form-input" required data-validate data-label="Address Line 1">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Address Line 2</label>
@@ -96,20 +101,20 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
                                     <label class="form-label">City</label>
-                                    <input type="text" id="city" class="form-input" required>
+                                    <input type="text" id="city" class="form-input" required data-validate data-label="City">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">State</label>
-                                    <input type="text" id="state" class="form-input" required>
+                                    <input type="text" id="state" class="form-input" required data-validate data-label="State">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Zip Code</label>
-                                <input type="text" id="zip" class="form-input" required>
+                                <input type="text" id="zip" class="form-input" required data-validate data-label="Zip Code">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone</label>
-                                <input type="tel" id="phone" class="form-input" required>
+                                <input type="tel" id="phone" class="form-input" required data-validate data-label="Phone">
                             </div>
                             <div class="form-group" style="margin-top: 0.75rem;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
@@ -120,12 +125,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="card">
+                <div class="card checkout-card">
                     <div class="card-content">
                         <h3 style="margin-bottom: 1.5rem;">Payment Method</h3>
                         <div class="form-group">
                             <label class="form-label">Select Payment</label>
-                            <select id="payment_method" class="form-select" required>
+                            <select id="payment_method" class="form-select" required data-validate data-label="Payment Method">
                                 <option value="gpay">Google Pay (UPI)</option>
                                 <option value="cash_on_delivery">Cash on Delivery</option>
                             </select>
@@ -141,7 +146,7 @@
                             </div>
                             <div class="form-group">
                                 <label id="gpay-detail-label" class="form-label">UPI ID</label>
-                                <input type="text" id="gpay-detail-value" class="form-input" placeholder="e.g. name@upi">
+                                <input type="text" id="gpay-detail-value" class="form-input" placeholder="e.g. name@upi" data-validate data-label="GPay Detail">
                                 <div class="form-help">This is shared only with the owner for payment confirmation.</div>
                             </div>
                             <div class="form-help" id="gpay-prefill-hint">Prefilled from your Billing Management details.</div>
@@ -154,7 +159,7 @@
                 </div>
             </form>
             <div class="checkout-summary-wrapper">
-                <div class="card" style="margin-bottom: 1rem;">
+                <div class="card checkout-card" style="margin-bottom: 1rem;">
                     <div class="card-content">
                         <h3 style="margin-bottom: 1.5rem;">Order Summary</h3>
                         <div id="order-items" style="margin-bottom: 1rem;"></div>
@@ -195,8 +200,8 @@
                             <div style="display: flex; justify-content: space-between; font-size: 1.1rem; margin-bottom: 1.5rem; font-weight:600;">
                                 <strong>Total:</strong><strong id="order-total" style="color: var(--primary);">₹0.00</strong>
                             </div>
-                            <button type="submit" form="checkout-form" class="btn btn-primary" style="width: 100%;">
-                                <i class="fas fa-check"></i> Place Order
+                            <button type="submit" id="place-order-btn" form="checkout-form" class="btn btn-primary" style="width: 100%;">
+                                <i class="fas fa-check"></i> <span class="place-order-label">Place Order</span>
                             </button>
                         </div>
                     </div>
@@ -245,11 +250,59 @@
     </div>
 
     <style>
+        .checkout-steps {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
+            margin: 0 0 1.5rem;
+        }
+
+        .checkout-step {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.6rem 0.7rem;
+            border: 1px solid var(--border-primary);
+            border-radius: 10px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .checkout-step .step-index {
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-primary);
+            font-size: 0.75rem;
+        }
+
+        .checkout-step.is-active {
+            border-color: var(--primary-300);
+            color: var(--primary-700);
+            background: var(--primary-50);
+        }
+
+        .checkout-step.is-active .step-index {
+            background: var(--primary-600);
+            border-color: var(--primary-600);
+            color: #fff;
+        }
+
         .checkout-layout {
             display: grid;
             grid-template-columns: 1fr 400px;
             gap: 2rem;
             align-items: flex-start;
+        }
+
+        .checkout-card {
+            border-radius: 14px;
         }
 
         .checkout-summary-wrapper {
@@ -305,6 +358,11 @@
             background: var(--bg-secondary);
         }
 
+        #place-order-btn[disabled] {
+            opacity: 0.8;
+            cursor: wait;
+        }
+
         .address-details {
             color: var(--text-primary);
             font-size: 0.9rem;
@@ -345,6 +403,10 @@
         }
 
         @media (max-width: 900px) {
+            .checkout-steps {
+                grid-template-columns: 1fr;
+            }
+
             .checkout-layout {
                 grid-template-columns: 1fr;
             }
@@ -1049,10 +1111,63 @@
             }
         }
 
+        function clearFieldError(field) {
+            if (!field) return;
+            field.classList.remove('is-invalid');
+            const existing = field.parentElement?.querySelector('.field-error');
+            if (existing) existing.remove();
+        }
+
+        function showFieldError(field, message) {
+            if (!field) return;
+            clearFieldError(field);
+            field.classList.add('is-invalid');
+            const error = document.createElement('small');
+            error.className = 'field-error';
+            error.textContent = message;
+            field.parentElement?.appendChild(error);
+        }
+
+        function validateRequiredField(field) {
+            if (!field || !field.required || field.offsetParent === null) return true;
+            const value = (field.value || '').trim();
+            if (value) {
+                clearFieldError(field);
+                return true;
+            }
+            const label = field.getAttribute('data-label') || field.id || 'This field';
+            showFieldError(field, `${label} is required.`);
+            return false;
+        }
+
+        function validateCheckoutForm() {
+            let isValid = true;
+            const fields = document.querySelectorAll('#checkout-form [data-validate]');
+            fields.forEach(field => {
+                const fieldIsValid = validateRequiredField(field);
+                if (!fieldIsValid) isValid = false;
+            });
+            return isValid;
+        }
+
+        function setPlaceOrderButtonState(isProcessing) {
+            const placeOrderBtn = document.getElementById('place-order-btn');
+            const label = placeOrderBtn?.querySelector('.place-order-label');
+            if (!placeOrderBtn) return;
+
+            placeOrderBtn.disabled = !!isProcessing;
+            if (label) {
+                label.textContent = isProcessing ? 'Placing Order...' : 'Place Order';
+            }
+
+            const icon = placeOrderBtn.querySelector('i');
+            if (icon) {
+                icon.className = isProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-check';
+            }
+        }
+
         document.getElementById('checkout-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            const placeOrderBtn = document.querySelector('button[form="checkout-form"]');
             
             let shippingAddress;
             
@@ -1079,9 +1194,10 @@
                 const zipEl = document.getElementById('zip');
                 const phoneEl = document.getElementById('phone');
 
-                if (!nameEl.value || !addrEl.value || !cityEl.value || !stateEl.value || !zipEl.value || !phoneEl.value) {
+                if (!validateCheckoutForm()) {
                     showAlert('Please fill in all required shipping address fields.', 'error');
-                    if (nameEl) nameEl.focus();
+                    const firstInvalid = document.querySelector('#checkout-form .is-invalid');
+                    if (firstInvalid) firstInvalid.focus();
                     return;
                 }
 
@@ -1097,10 +1213,7 @@
                 };
             }
             
-            if (placeOrderBtn) {
-                placeOrderBtn.disabled = true;
-                placeOrderBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing Order...';
-            }
+            setPlaceOrderButtonState(true);
 
             showOrderProcessing();
 
@@ -1115,15 +1228,15 @@
                 gpayDetailValue = (valueInput?.value || '').trim();
 
                 if (!gpayDetailValue) {
+                    if (valueInput) showFieldError(valueInput, `${formatGpayLabel(gpayDetailType)} is required.`);
                     showAlert(`Please enter your ${formatGpayLabel(gpayDetailType)} for GPay.`, 'error');
                     if (valueInput) valueInput.focus();
                     hideOrderStatusModal();
-                    if (placeOrderBtn) {
-                        placeOrderBtn.disabled = false;
-                        placeOrderBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
-                    }
+                    setPlaceOrderButtonState(false);
                     return;
                 }
+
+                if (valueInput) clearFieldError(valueInput);
 
                 saveBillingProfile({ preferred: gpayDetailType, [gpayDetailType]: gpayDetailValue });
             }
@@ -1179,9 +1292,13 @@
                 const result = await api.post('/orders', orderData);
 
                 // Reflect success state in the underlying order summary as well
+                const placeOrderBtn = document.getElementById('place-order-btn');
                 if (placeOrderBtn) {
                     placeOrderBtn.disabled = true;
-                    placeOrderBtn.innerHTML = '<i class="fas fa-check"></i> Order Placed';
+                    const label = placeOrderBtn.querySelector('.place-order-label');
+                    const icon = placeOrderBtn.querySelector('i');
+                    if (label) label.textContent = 'Order Placed';
+                    if (icon) icon.className = 'fas fa-check';
                 }
                 
                 const itemsContainer = document.getElementById('order-items');
@@ -1196,10 +1313,7 @@
                 showOrderSuccess(result.order);
             } catch (error) {
                 hideOrderStatusModal();
-                if (placeOrderBtn) {
-                    placeOrderBtn.disabled = false;
-                    placeOrderBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
-                }
+                setPlaceOrderButtonState(false);
                 showAlert(error.message || 'Failed to place order', 'error');
             }
         });
@@ -1221,6 +1335,22 @@
             auth.updateNavigationLinks();
 
             wireBillingUI();
+
+            document.querySelectorAll('#checkout-form [data-validate]').forEach(field => {
+                field.addEventListener('blur', () => {
+                    validateRequiredField(field);
+                });
+                field.addEventListener('input', () => {
+                    if ((field.value || '').trim()) {
+                        clearFieldError(field);
+                    }
+                });
+                field.addEventListener('change', () => {
+                    if ((field.value || '').trim()) {
+                        clearFieldError(field);
+                    }
+                });
+            });
 
             // Account dropdown toggle
             const accountToggle = document.getElementById('account-toggle');
