@@ -231,6 +231,13 @@
             color: var(--primary-600);
             margin-bottom: 0.5rem;
         }
+
+        .product-total-price {
+            margin-top: 0.45rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
         
         @media (max-width: 768px) {
             .product-price {
@@ -772,6 +779,55 @@
         let selectedQuantity = 1;
         let userAddresses = [];
 
+        function getCurrentPricing() {
+            if (!product) return { basePrice: 0, salePrice: 0, showDiscount: false, isWholesale: false };
+
+            const isWholesale = auth.isWholesale();
+            const basePrice = parseFloat(product.price || 0);
+            const discount = product.discount_price != null ? parseFloat(product.discount_price) : null;
+            const retailPrice = discount != null && discount < basePrice ? discount : basePrice;
+            const salePrice = isWholesale && product.wholesale_price ? parseFloat(product.wholesale_price) : retailPrice;
+            const showDiscount = !isWholesale && discount != null && discount < basePrice;
+
+            return { basePrice, salePrice, showDiscount, isWholesale };
+        }
+
+        function updateDisplayedPrice() {
+            const pricing = getCurrentPricing();
+            const qty = Number(selectedQuantity) > 0 ? Number(selectedQuantity) : 1;
+
+            const salePriceEl = document.getElementById('product-sale-price');
+            const basePriceEl = document.getElementById('product-base-price');
+            const totalPriceEl = document.getElementById('product-total-price');
+            const perUnitHintEl = document.getElementById('product-price-hint');
+
+            const saleTotal = pricing.salePrice * qty;
+            const baseTotal = pricing.basePrice * qty;
+
+            if (salePriceEl) {
+                salePriceEl.textContent = formatCurrency(saleTotal);
+            }
+
+            if (basePriceEl) {
+                if (pricing.showDiscount) {
+                    basePriceEl.textContent = formatCurrency(baseTotal);
+                    basePriceEl.style.display = '';
+                } else {
+                    basePriceEl.style.display = 'none';
+                }
+            }
+
+            if (totalPriceEl) {
+                totalPriceEl.textContent = qty > 1
+                    ? `Total for ${qty} items`
+                    : 'Total for 1 item';
+            }
+
+            if (perUnitHintEl) {
+                perUnitHintEl.textContent = `Per item: ${formatCurrency(pricing.salePrice)}`;
+            }
+        }
+
         async function loadProduct() {
             const urlParams = new URLSearchParams(window.location.search);
             const productId = urlParams.get('id');
@@ -815,6 +871,7 @@
         }
 
         function renderProduct() {
+            selectedQuantity = 1;
             const isWholesale = auth.isWholesale();
             const unitInfo = getUnitInfo(product);
             const basePrice = parseFloat(product.price || 0);
@@ -882,13 +939,15 @@
                         
                         <div class="product-price-section">
                             <div class="product-price">
-                                ${showDiscount ? `<span style="text-decoration: line-through; color: #d14343; font-size: 0.9em; margin-right: 8px;">${formatCurrency(basePrice)}</span>` : ''}
-                                <span style="color: var(--primary); font-weight: 700;">${formatCurrency(salePrice)}</span>
+                                <span id="product-base-price" style="text-decoration: line-through; color: #d14343; font-size: 0.9em; margin-right: 8px; ${showDiscount ? '' : 'display:none;'}">${formatCurrency(basePrice)}</span>
+                                <span id="product-sale-price" style="color: var(--primary); font-weight: 700;">${formatCurrency(salePrice)}</span>
+                                <div id="product-total-price" class="product-total-price">Total for 1 item</div>
                             </div>
                             ${isWholesale && product.wholesale_price ? 
                                 `<small style="color: var(--text-secondary);">Wholesale Price • Min Order: ${product.min_wholesale_qty} units</small>` : 
                                 `<small style="color: var(--text-secondary);">Per ${unitInfo.per}</small>`
                             }
+                            <div id="product-price-hint" style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Per item: ${formatCurrency(salePrice)}</div>
                             
                             <div class="product-stock ${lowStock ? 'low' : ''} ${!inStock ? 'out' : ''}" style="margin-top: 1rem;">
                                 ${inStock ? 
@@ -903,7 +962,7 @@
                                     <div class="quantity-controls">
                                         <button onclick="decrementQuantity()">-</button>
                                         <input type="number" id="quantity" value="1" min="1" max="${product.stock_quantity}" 
-                                               onchange="updateQuantity(this.value)">
+                                                   onchange="updateQuantity(this.value)" oninput="updateQuantity(this.value)">
                                         <button onclick="incrementQuantity()">+</button>
                                     </div>
                                 </div>
@@ -965,6 +1024,7 @@
             `;
             
             document.getElementById('product-content').innerHTML = content;
+            updateDisplayedPrice();
         }
 
         function selectProductImage(thumbnailElement) {
@@ -1013,6 +1073,7 @@
             const qty = parseInt(value);
             if (qty > 0 && qty <= product.stock_quantity) {
                 selectedQuantity = qty;
+                updateDisplayedPrice();
             } else {
                 document.getElementById('quantity').value = selectedQuantity;
             }
@@ -1022,6 +1083,7 @@
             if (selectedQuantity < product.stock_quantity) {
                 selectedQuantity++;
                 document.getElementById('quantity').value = selectedQuantity;
+                updateDisplayedPrice();
             }
         }
 
@@ -1029,6 +1091,7 @@
             if (selectedQuantity > 1) {
                 selectedQuantity--;
                 document.getElementById('quantity').value = selectedQuantity;
+                updateDisplayedPrice();
             }
         }
 
