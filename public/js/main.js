@@ -1275,9 +1275,8 @@ window.optimizeDynamicImages = optimizeDynamicImages;
 // Restore database handler for admin.html
 window.handleRestoreDatabase = async function(event) {
   event.preventDefault();
-  const form = document.getElementById('restore-form');
   const fileInput = document.getElementById('restore-sqlfile');
-  const file = fileInput.files[0];
+  const file = fileInput?.files?.[0];
   if (!file) {
     showAlert('Please select a .sql file to restore.', 'error');
     return;
@@ -1286,12 +1285,22 @@ window.handleRestoreDatabase = async function(event) {
   formData.append('sqlfile', file);
   try {
     showAlert('Restoring database...', 'info');
+    const token = localStorage.getItem('token');
     const response = await fetch('/api/restore', {
       method: 'POST',
       body: formData,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: 'include'
     });
-    const data = await response.json();
+
+    const raw = await response.text();
+    let data = {};
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      data = { error: raw || 'Restore failed' };
+    }
+
     if (response.ok) {
       const restored = data?.verification?.usersCount;
       const expected = data?.verification?.expectedUsersFromBackup;
@@ -1300,7 +1309,11 @@ window.handleRestoreDatabase = async function(event) {
         : '';
       window.showSuccessModal(`Database restored successfully!${details}`);
     } else {
-      showAlert(data.error || 'Restore failed', 'error');
+      if (response.status === 401 || response.status === 403) {
+        showAlert('Restore denied. Please login as Super Admin and try again.', 'error');
+      } else {
+        showAlert(data.error || 'Restore failed', 'error');
+      }
     }
   } catch (error) {
     showAlert(error.message || 'Restore failed', 'error');
