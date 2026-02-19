@@ -812,13 +812,6 @@
                     }
                 }
 
-                const headingImageUrl = (settings.homepage_hero_image_url || '').trim();
-                const safeHeadingImageUrl = headingImageUrl ? encodeURI(headingImageUrl) : '';
-                const headingSectionId = String(settings.homepage_hero_section_id || '').trim();
-                const fallbackSectionId = !headingSectionId && sections.length > 0
-                    ? String(sections[sections.length - 1].id)
-                    : '';
-                const targetHeadingSectionId = headingSectionId || fallbackSectionId;
                 const container = document.getElementById('homepage-sections-container');
                 
                 if (sections.length === 0) {
@@ -828,16 +821,17 @@
                 
                 let html = '';
                 
-                sections.forEach((section, index) => {
+                sections.forEach((section) => {
                     const sectionProducts = Array.isArray(section.products) ? section.products : [];
-                    const matchesConfiguredSection = targetHeadingSectionId && String(section.id) === targetHeadingSectionId;
-                    const showHeadingImage = !!headingImageUrl && (matchesConfiguredSection || (!targetHeadingSectionId && index === 0));
+                    const sectionHeadingImageUrl = (section.heading_image_url || '').trim();
+                    const safeSectionHeadingImageUrl = sectionHeadingImageUrl ? encodeURI(sectionHeadingImageUrl) : '';
+                    const showHeadingImage = !!sectionHeadingImageUrl;
                     html += `
                         <section class="container">
                             <div class="section-title">
                                 <div class="homepage-section-heading-wrap">
                                     <div class="homepage-section-heading-image-box ${showHeadingImage ? '' : 'hidden'}">
-                                        <img class="homepage-section-heading-image" src="${showHeadingImage ? safeHeadingImageUrl : ''}" alt="Section heading image" onerror="this.parentElement.classList.add('hidden')">
+                                        <img class="homepage-section-heading-image" src="${showHeadingImage ? safeSectionHeadingImageUrl : ''}" alt="${section.name || 'Section'} heading image" onerror="this.parentElement.classList.add('hidden')">
                                     </div>
                                     <div class="homepage-section-heading-text">
                                         <h2>${section.name}</h2>

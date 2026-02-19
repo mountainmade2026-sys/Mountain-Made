@@ -207,6 +207,7 @@ const initializeDatabase = async () => {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) UNIQUE NOT NULL,
         description TEXT,
+        heading_image_url VARCHAR(500),
         sort_order INTEGER DEFAULT 0,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -254,6 +255,49 @@ const initializeDatabase = async () => {
           WHERE table_name = 'site_settings' AND column_name = 'updated_at'
         ) THEN
           ALTER TABLE site_settings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+
+    // Ensure heading_image_url exists on homepage_sections for existing DBs,
+    // and migrate the legacy single heading image setting onto its mapped section.
+    await client.query(`
+      DO $$
+      DECLARE
+        legacy_image TEXT;
+        legacy_section_id TEXT;
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='homepage_sections' AND column_name='heading_image_url'
+        ) THEN
+          ALTER TABLE homepage_sections ADD COLUMN heading_image_url VARCHAR(500);
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'site_settings'
+        ) THEN
+          SELECT setting_value INTO legacy_image
+          FROM site_settings
+          WHERE setting_key = 'homepage_hero_image_url'
+          LIMIT 1;
+
+          SELECT setting_value INTO legacy_section_id
+          FROM site_settings
+          WHERE setting_key = 'homepage_hero_section_id'
+          LIMIT 1;
+
+          IF legacy_image IS NOT NULL AND btrim(legacy_image) <> ''
+             AND legacy_section_id IS NOT NULL AND btrim(legacy_section_id) <> ''
+             AND legacy_section_id ~ '^[0-9]+$'
+          THEN
+            UPDATE homepage_sections
+            SET heading_image_url = legacy_image,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = legacy_section_id::int
+              AND (heading_image_url IS NULL OR btrim(heading_image_url) = '');
+          END IF;
         END IF;
       END $$;
     `);

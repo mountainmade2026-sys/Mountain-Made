@@ -6768,7 +6768,18 @@
                 document.getElementById('add-section-form').reset();
                 window._addSectionHeadingCroppedFile = null;
                 window._addSectionHeadingSourceFile = null;
-                loadSiteSettings();
+
+                const preview = document.getElementById('homepage-hero-image-preview');
+                const placeholder = document.getElementById('homepage-hero-image-placeholder');
+                const current = document.getElementById('homepage-hero-image-current');
+                const input = document.getElementById('homepage-hero-image-upload');
+                if (current) current.value = '';
+                if (input) input.value = '';
+                if (preview && placeholder) {
+                    preview.src = '';
+                    preview.style.display = 'none';
+                    placeholder.style.display = 'block';
+                }
             }
         };
 
@@ -6779,6 +6790,18 @@
                 document.getElementById('add-section-form').reset();
                 window._addSectionHeadingCroppedFile = null;
                 window._addSectionHeadingSourceFile = null;
+
+                const preview = document.getElementById('homepage-hero-image-preview');
+                const placeholder = document.getElementById('homepage-hero-image-placeholder');
+                const current = document.getElementById('homepage-hero-image-current');
+                const input = document.getElementById('homepage-hero-image-upload');
+                if (current) current.value = '';
+                if (input) input.value = '';
+                if (preview && placeholder) {
+                    preview.src = '';
+                    preview.style.display = 'none';
+                    placeholder.style.display = 'block';
+                }
             }
         };
 
@@ -6825,9 +6848,8 @@
                         }
 
                         showAlert('Saving heading image...', 'info');
-                        await api.post('/admin/settings', {
-                            homepage_hero_image_url: uploadedImageUrl,
-                            homepage_hero_section_id: String(createdSectionId)
+                        await api.put(`/admin/homepage-sections/${createdSectionId}`, {
+                            heading_image_url: uploadedImageUrl
                         });
                     }
 
@@ -6883,26 +6905,13 @@
             if (editCropY) editCropY.value = 50;
 
             if (editImageCurrent && editImagePreview && editImagePlaceholder) {
-                try {
-                    const settingsResponse = await api.get('/admin/settings');
-                    const settings = settingsResponse?.settings || {};
-                    const currentImageUrl = (settings.homepage_hero_image_url || '').trim();
-                    const currentImageSectionId = String(settings.homepage_hero_section_id || '').trim();
-                    const isMappedToThisSection = currentImageUrl && currentImageSectionId && currentImageSectionId === String(section.id);
-
-                    if (isMappedToThisSection) {
-                        editImageCurrent.value = currentImageUrl;
-                        editImagePreview.src = currentImageUrl;
-                        editImagePreview.style.display = 'block';
-                        editImagePlaceholder.style.display = 'none';
-                    } else {
-                        editImageCurrent.value = '';
-                        editImagePreview.src = '';
-                        editImagePreview.style.display = 'none';
-                        editImagePlaceholder.style.display = 'block';
-                    }
-                } catch (error) {
-                    console.error('Failed to load heading image settings for edit modal:', error);
+                const currentImageUrl = (section.heading_image_url || '').trim();
+                if (currentImageUrl) {
+                    editImageCurrent.value = currentImageUrl;
+                    editImagePreview.src = currentImageUrl;
+                    editImagePreview.style.display = 'block';
+                    editImagePlaceholder.style.display = 'none';
+                } else {
                     editImageCurrent.value = '';
                     editImagePreview.src = '';
                     editImagePreview.style.display = 'none';
@@ -6978,14 +6987,8 @@
                         }
 
                         showAlert('Saving heading image...', 'info');
-                        await api.post('/admin/settings', {
-                            homepage_hero_image_url: uploadedImageUrl,
-                            homepage_hero_section_id: String(sectionId)
-                        });
-                    } else if (existingMappedImageUrl) {
-                        await api.post('/admin/settings', {
-                            homepage_hero_image_url: existingMappedImageUrl,
-                            homepage_hero_section_id: String(sectionId)
+                        await api.put(`/admin/homepage-sections/${sectionId}`, {
+                            heading_image_url: uploadedImageUrl
                         });
                     }
 

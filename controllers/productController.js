@@ -152,6 +152,7 @@ exports.getHomepageSections = async (req, res) => {
         hs.id,
         hs.name,
         hs.description,
+        hs.heading_image_url,
         hs.sort_order,
         json_agg(
           json_build_object(
@@ -173,7 +174,7 @@ exports.getHomepageSections = async (req, res) => {
       FROM homepage_sections hs
       LEFT JOIN products p ON hs.id = p.homepage_section_id AND COALESCE(p.is_active, true) = true
       WHERE hs.is_active = true
-      GROUP BY hs.id, hs.name, hs.description, hs.sort_order
+      GROUP BY hs.id, hs.name, hs.description, hs.heading_image_url, hs.sort_order
       ORDER BY hs.sort_order ASC, hs.created_at ASC
     `;
     

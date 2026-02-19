@@ -898,21 +898,22 @@ exports.getAllHomepageSections = async (req, res) => {
 
 exports.createHomepageSection = async (req, res) => {
   try {
-    const { name, description, sort_order } = req.body;
+    const { name, description, sort_order, heading_image_url } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'Section name is required.' });
     }
     
     const query = `
-      INSERT INTO homepage_sections (name, description, sort_order, is_active)
-      VALUES ($1, $2, $3, true)
+      INSERT INTO homepage_sections (name, description, heading_image_url, sort_order, is_active)
+      VALUES ($1, $2, $3, $4, true)
       RETURNING *
     `;
     
     const result = await db.query(query, [
       name,
       description || null,
+      heading_image_url || null,
       sort_order || 0
     ]);
     
@@ -933,20 +934,21 @@ exports.createHomepageSection = async (req, res) => {
 exports.updateHomepageSection = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, sort_order, is_active } = req.body;
+    const { name, description, heading_image_url, sort_order, is_active } = req.body;
     
     const query = `
       UPDATE homepage_sections 
       SET name = COALESCE($1, name),
           description = COALESCE($2, description),
-          sort_order = COALESCE($3, sort_order),
-          is_active = COALESCE($4, is_active),
+          heading_image_url = COALESCE($3, heading_image_url),
+          sort_order = COALESCE($4, sort_order),
+          is_active = COALESCE($5, is_active),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      WHERE id = $6
       RETURNING *
     `;
     
-    const result = await db.query(query, [name, description, sort_order, is_active, id]);
+    const result = await db.query(query, [name, description, heading_image_url, sort_order, is_active, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Homepage section not found.' });
