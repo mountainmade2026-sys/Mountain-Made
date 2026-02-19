@@ -57,6 +57,65 @@ if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
 
 const pool = new Pool(poolConfig);
 
+const hasPrimaryKeyOnId = async (client, tableName) => {
+  const result = await client.query(
+    `
+      SELECT 1
+      FROM pg_constraint c
+      JOIN pg_class t ON t.oid = c.conrelid
+      JOIN pg_namespace n ON n.oid = t.relnamespace
+      WHERE n.nspname = 'public'
+        AND t.relname = $1
+        AND c.contype = 'p'
+      LIMIT 1
+    `,
+    [tableName]
+  );
+  return result.rows.length > 0;
+};
+
+const hasDuplicateIds = async (client, tableName) => {
+  const result = await client.query(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM ${tableName}
+        GROUP BY id
+        HAVING COUNT(*) > 1
+      ) AS has_duplicates
+    `
+  );
+  return Boolean(result.rows[0]?.has_duplicates);
+};
+
+const ensurePrimaryKeyOnId = async (client, tableName) => {
+  const alreadyHasPk = await hasPrimaryKeyOnId(client, tableName);
+  if (alreadyHasPk) return;
+
+  const duplicates = await hasDuplicateIds(client, tableName);
+  if (duplicates) {
+    console.warn(`⚠️  Duplicate IDs found in ${tableName}. Skipping PK enforcement until duplicates are cleaned.`);
+    return;
+  }
+
+  await client.query(`ALTER TABLE ${tableName} ADD PRIMARY KEY (id)`);
+};
+
+const syncIdSequence = async (client, tableName) => {
+  const seqResult = await client.query(
+    `SELECT pg_get_serial_sequence($1, 'id') AS seq`,
+    [`public.${tableName}`]
+  );
+
+  const seqName = seqResult.rows[0]?.seq;
+  if (!seqName) return;
+
+  await client.query(
+    `SELECT setval($1, COALESCE((SELECT MAX(id) FROM ${tableName}), 1), true)`,
+    [seqName]
+  );
+};
+
 pool.on('connect', () => {
   console.log('✓ Connected to PostgreSQL database');
 });
@@ -719,6 +778,35 @@ const initializeDatabase = async () => {
         ('Featured Products', 'Handpicked selections from our premium collection', 1, true)
         ON CONFLICT (name) DO NOTHING;
       `);
+    }
+
+    const idIntegrityTables = [
+      'users',
+      'categories',
+      'homepage_sections',
+      'site_settings',
+      'products',
+      'cart',
+      'orders',
+      'order_items',
+      'addresses',
+      'backups',
+      'uploads',
+      'contact_messages'
+    ];
+
+    for (const tableName of idIntegrityTables) {
+      try {
+        await ensurePrimaryKeyOnId(client, tableName);
+      } catch (error) {
+        console.warn(`ID integrity warning for ${tableName}:`, error.message);
+      }
+
+      try {
+        await syncIdSequence(client, tableName);
+      } catch (error) {
+        console.warn(`Sequence sync warning for ${tableName}:`, error.message);
+      }
     }
 
     console.log('✓ Database schema initialized successfully');
