@@ -1221,6 +1221,40 @@
             }
         }
 
+        @media (max-width: 767px) {
+            .admin-main table {
+                display: table;
+                width: 100%;
+            }
+
+            .admin-main table thead {
+                display: table-header-group;
+            }
+
+            .admin-main table tbody {
+                display: table-row-group;
+            }
+
+            .admin-main table tr {
+                display: table-row;
+                margin: 0;
+                border: none;
+                padding: 0;
+            }
+
+            .admin-main table th,
+            .admin-main table td {
+                display: table-cell;
+                text-align: left;
+                padding: 0.75rem 0.5rem;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .admin-main table td:before {
+                content: none;
+            }
+        }
+
         @media (max-width: 480px) {
             .navbar {
                 padding: 0.75rem;

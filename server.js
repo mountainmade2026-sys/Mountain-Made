@@ -112,8 +112,6 @@ app.use((req, res, next) => {
       '/index.html',
       '/products',
       '/products.html',
-      '/product-details',
-      '/product-details.html',
       '/orders',
       '/orders.html',
       '/contact',
