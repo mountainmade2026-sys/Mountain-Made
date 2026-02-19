@@ -2,6 +2,64 @@ const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 
 class User {
+  static async ensureUser(params) {
+    const {
+      email,
+      password,
+      full_name,
+      phone,
+      role,
+      business_name = null,
+      tax_id = null,
+      is_approved = true,
+      is_blocked = false
+    } = params || {};
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Email is required');
+    }
+    if (!password) {
+      throw new Error('Password is required');
+    }
+    if (!full_name) {
+      throw new Error('Full name is required');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const query = `
+      INSERT INTO users (email, password, full_name, phone, role, business_name, tax_id, is_approved, is_blocked)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (email) DO UPDATE SET
+        password = EXCLUDED.password,
+        full_name = EXCLUDED.full_name,
+        phone = EXCLUDED.phone,
+        role = EXCLUDED.role,
+        business_name = EXCLUDED.business_name,
+        tax_id = EXCLUDED.tax_id,
+        is_approved = EXCLUDED.is_approved,
+        is_blocked = EXCLUDED.is_blocked,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id, email, full_name, phone, role, business_name, tax_id, is_approved, is_blocked, created_at;
+    `;
+
+    const values = [
+      normalizedEmail,
+      hashedPassword,
+      full_name,
+      phone || null,
+      role || 'customer',
+      business_name,
+      tax_id,
+      !!is_approved,
+      !!is_blocked
+    ];
+
+    const result = await db.query(query, values);
+    return result.rows[0];
+  }
+
   static async create(userData) {
     const { email, password, full_name, phone, role, business_name, tax_id } = userData;
     const normalizedEmail = (email || '').trim().toLowerCase();
@@ -62,6 +120,32 @@ class User {
     const values = [normalizedEmail, hashedPassword];
     const result = await db.query(query, values);
     return result.rows[0];
+  }
+
+  static async ensureTestCustomer(email, password) {
+    return this.ensureUser({
+      email,
+      password,
+      full_name: 'Test Customer',
+      phone: '9999999999',
+      role: 'customer',
+      is_approved: true,
+      is_blocked: false
+    });
+  }
+
+  static async ensureTestWholesale(email, password) {
+    return this.ensureUser({
+      email,
+      password,
+      full_name: 'Test Wholesale',
+      phone: '9999999999',
+      role: 'wholesale',
+      business_name: 'Test Wholesale Business',
+      tax_id: 'TEST-TAX-0001',
+      is_approved: true,
+      is_blocked: false
+    });
   }
 
   static async findByEmail(email) {

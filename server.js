@@ -387,6 +387,27 @@ const initializeApp = async () => {
     await User.ensureSuperAdmin(superAdminEmail, superAdminPassword);
     console.log(`✓ Super admin user ensured: ${superAdminEmail}`);
 
+    const enableTestAccounts = String(process.env.ENABLE_TEST_ACCOUNTS || '').trim().toLowerCase() === 'true';
+    if (enableTestAccounts) {
+      const testCustomerEmail = String(process.env.TEST_CUSTOMER_EMAIL || '').trim();
+      const testCustomerPassword = String(process.env.TEST_CUSTOMER_PASSWORD || '').trim();
+      if (testCustomerEmail && testCustomerPassword) {
+        await User.ensureTestCustomer(testCustomerEmail, testCustomerPassword);
+        console.log(`✓ Test customer ensured: ${testCustomerEmail}`);
+      } else {
+        console.warn('⚠️  ENABLE_TEST_ACCOUNTS=true but TEST_CUSTOMER_EMAIL/TEST_CUSTOMER_PASSWORD not fully set. Skipping test customer.');
+      }
+
+      const testWholesaleEmail = String(process.env.TEST_WHOLESALE_EMAIL || '').trim();
+      const testWholesalePassword = String(process.env.TEST_WHOLESALE_PASSWORD || '').trim();
+      if (testWholesaleEmail && testWholesalePassword) {
+        await User.ensureTestWholesale(testWholesaleEmail, testWholesalePassword);
+        console.log(`✓ Test wholesale ensured: ${testWholesaleEmail}`);
+      } else {
+        console.warn('⚠️  ENABLE_TEST_ACCOUNTS=true but TEST_WHOLESALE_EMAIL/TEST_WHOLESALE_PASSWORD not fully set. Skipping test wholesale.');
+      }
+    }
+
     console.log('✓ Application initialized successfully');
   } catch (error) {
     console.error('Application initialization failed:', error);

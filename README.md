@@ -104,6 +104,17 @@ JWT_SECRET=your_very_secure_random_jwt_secret_key_here
 # Admin Credentials
 ADMIN_EMAIL=admin@mountainmade.com
 ADMIN_PASSWORD=Admin@123
+
+# Super Admin Credentials
+SUPER_ADMIN_EMAIL=developer@mountainmade.com
+SUPER_ADMIN_PASSWORD=SuperAdmin@123
+
+# Optional: Auto-create test accounts on startup (useful for Render testing)
+ENABLE_TEST_ACCOUNTS=false
+TEST_CUSTOMER_EMAIL=test.customer@mountainmade.local
+TEST_CUSTOMER_PASSWORD=change_me
+TEST_WHOLESALE_EMAIL=test.wholesale@mountainmade.local
+TEST_WHOLESALE_PASSWORD=change_me
 ```
 
 **⚠️ IMPORTANT**: 
@@ -157,6 +168,22 @@ Open your browser and navigate to:
 - Password: Admin@123 (or your custom password from .env)
 
 ## 📱 User Accounts
+
+### Optional temporary test accounts (Render/local)
+
+If you want the app to create a **test customer** and a **test wholesale** account automatically (for temporary testing on Render), set these environment variables and restart the service:
+
+```env
+ENABLE_TEST_ACCOUNTS=true
+TEST_CUSTOMER_EMAIL=your_test_customer_email
+TEST_CUSTOMER_PASSWORD=your_test_customer_password
+TEST_WHOLESALE_EMAIL=your_test_wholesale_email
+TEST_WHOLESALE_PASSWORD=your_test_wholesale_password
+```
+
+Then you can log in normally from `/login`.
+
+**Important**: turn it off after testing by setting `ENABLE_TEST_ACCOUNTS=false` (or removing the vars) and redeploying.
 
 ### Admin Account
 - **Email**: admin@mountainmade.com
