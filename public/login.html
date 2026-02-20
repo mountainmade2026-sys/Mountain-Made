@@ -175,6 +175,7 @@
                         <label class="form-label" style="margin-bottom: 0.35rem;">Enter OTP</label>
                         <input type="text" id="phone-login-otp" class="form-input" placeholder="Enter OTP code" inputmode="numeric" maxlength="8">
                     </div>
+                    <small id="phone-otp-countdown" style="display:block; margin-bottom:0.55rem; color:#374151;"></small>
                     <button id="phone-verify-btn" type="button" class="btn btn-primary" style="width: 100%;">
                         <i class="fas fa-check-circle"></i> Verify OTP and Login
                     </button>
@@ -321,7 +322,44 @@
         const phoneVerifyBtn = document.getElementById('phone-verify-btn');
         const phoneOtpWrap = document.getElementById('phone-otp-wrap');
         const phoneLoginStatus = document.getElementById('phone-login-status');
+        const phoneOtpCountdown = document.getElementById('phone-otp-countdown');
         let phoneForOtp = '';
+        let phoneOtpTimer = null;
+        let phoneOtpSecondsLeft = 0;
+
+        function stopPhoneOtpCountdown() {
+            if (phoneOtpTimer) {
+                clearInterval(phoneOtpTimer);
+                phoneOtpTimer = null;
+            }
+            phoneOtpSecondsLeft = 0;
+        }
+
+        function startPhoneOtpCountdown(seconds = 60) {
+            stopPhoneOtpCountdown();
+            phoneOtpSecondsLeft = Number(seconds) || 60;
+
+            const renderCountdown = () => {
+                if (!phoneOtpCountdown) return;
+                if (phoneOtpSecondsLeft > 0) {
+                    phoneOtpCountdown.textContent = `Type OTP within ${phoneOtpSecondsLeft}s`;
+                    phoneOtpCountdown.style.color = '#92400e';
+                } else {
+                    phoneOtpCountdown.textContent = 'OTP expired. Click Find Phone Number to get a new OTP.';
+                    phoneOtpCountdown.style.color = '#b91c1c';
+                }
+            };
+
+            renderCountdown();
+            phoneOtpTimer = setInterval(() => {
+                phoneOtpSecondsLeft -= 1;
+                renderCountdown();
+
+                if (phoneOtpSecondsLeft <= 0) {
+                    stopPhoneOtpCountdown();
+                }
+            }, 1000);
+        }
 
         if (phoneLoginBtn && phoneLoginPanel) {
             phoneLoginBtn.addEventListener('click', () => {
@@ -347,6 +385,8 @@
                     const data = await api.post('/auth/phone/login/send-otp', { phone });
                     phoneForOtp = data?.phone || phone;
                     if (phoneOtpWrap) phoneOtpWrap.classList.remove('hidden');
+                    if (phoneOtpInput) phoneOtpInput.value = '';
+                    startPhoneOtpCountdown(60);
                     if (phoneLoginStatus) {
                         phoneLoginStatus.textContent = `Sent OTP to ${phoneForOtp}`;
                         phoneLoginStatus.style.color = '#166534';
@@ -355,6 +395,10 @@
                 } catch (error) {
                     phoneForOtp = '';
                     if (phoneOtpWrap) phoneOtpWrap.classList.add('hidden');
+                    stopPhoneOtpCountdown();
+                    if (phoneOtpCountdown) {
+                        phoneOtpCountdown.textContent = '';
+                    }
                     const msg = String(error?.message || 'Failed to find phone number.');
                     if (phoneLoginStatus) {
                         phoneLoginStatus.textContent = msg;
@@ -379,6 +423,11 @@
                     return;
                 }
 
+                if (phoneOtpSecondsLeft <= 0) {
+                    showAlert('OTP expired. Please request a new OTP.', 'error');
+                    return;
+                }
+
                 try {
                     phoneVerifyBtn.disabled = true;
                     phoneVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
@@ -393,6 +442,7 @@
 
                     auth.currentUser = result?.user || null;
                     auth.updateUI();
+                    stopPhoneOtpCountdown();
                     showAlert('Phone login successful.', 'success');
                     redirectByRole(result?.user);
                 } catch (error) {
