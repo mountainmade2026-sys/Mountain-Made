@@ -166,55 +166,64 @@ router.post('/', optionalAuth, async (req, res) => {
       safeSource
     ]);
 
-    let emailForward = { sent: false, reason: null, recipient: null, errorMessage: null };
-    try {
-      emailForward = await forwardContactMessageByEmail({
-        full_name: safeName,
-        email: safeEmail,
-        phone: safePhone,
-        subject: safeSubject,
-        message: safeMessage,
-        source_page: safeSource
-      });
-    } catch (mailErr) {
-      console.error('Contact email forward error:', mailErr);
-      emailForward = {
-        sent: false,
-        reason: 'send_failed',
-        recipient: null,
-        errorMessage: String(mailErr?.message || 'Email send failed')
-      };
-    }
-
-    const forwardError = emailForward.sent
-      ? null
-      : String(emailForward.errorMessage || emailForward.reason || 'not_forwarded');
-
-    await db.query(
-      `
-        UPDATE contact_messages
-        SET
-          email_forwarded = $1,
-          email_forwarded_at = $2,
-          forwarded_to = $3,
-          email_forward_error = $4
-        WHERE id = $5
-      `,
-      [
-        !!emailForward.sent,
-        emailForward.sent ? new Date().toISOString() : null,
-        emailForward.recipient || null,
-        forwardError,
-        result.rows[0].id
-      ]
-    );
-
+    // Respond immediately so the customer UI doesn't hang if SMTP is slow/blocked.
+    // Email forwarding happens in the background and is recorded on the message row.
     res.status(201).json({
       message: 'Sent successfully.',
       id: result.rows[0].id,
       created_at: result.rows[0].created_at,
-      email_forwarded: !!emailForward.sent,
-      forwarded_to: emailForward.recipient || null
+      email_forwarded: false,
+      forwarded_to: null
+    });
+
+    const messageId = result.rows[0].id;
+    setImmediate(async () => {
+      let emailForward = { sent: false, reason: null, recipient: null, errorMessage: null };
+      try {
+        emailForward = await forwardContactMessageByEmail({
+          full_name: safeName,
+          email: safeEmail,
+          phone: safePhone,
+          subject: safeSubject,
+          message: safeMessage,
+          source_page: safeSource
+        });
+      } catch (mailErr) {
+        console.error('Contact email forward error:', mailErr);
+        emailForward = {
+          sent: false,
+          reason: 'send_failed',
+          recipient: null,
+          errorMessage: String(mailErr?.message || 'Email send failed')
+        };
+      }
+
+      const forwardError = emailForward.sent
+        ? null
+        : String(emailForward.errorMessage || emailForward.reason || 'not_forwarded');
+
+      try {
+        await db.query(
+          `
+            UPDATE contact_messages
+            SET
+              email_forwarded = $1,
+              email_forwarded_at = $2,
+              forwarded_to = $3,
+              email_forward_error = $4
+            WHERE id = $5
+          `,
+          [
+            !!emailForward.sent,
+            emailForward.sent ? new Date().toISOString() : null,
+            emailForward.recipient || null,
+            forwardError,
+            messageId
+          ]
+        );
+      } catch (updateErr) {
+        console.error('Contact email forward status update error:', updateErr);
+      }
     });
   } catch (error) {
     console.error('Contact submit error:', error);
