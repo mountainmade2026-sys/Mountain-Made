@@ -460,6 +460,11 @@ const cart = {
         return false;
       }
 
+      if (auth.isAdmin()) {
+        showAlert('Admin accounts are for management only and cannot add products to cart.', 'error');
+        return false;
+      }
+
       console.log('Adding product to cart:', productId);
       const response = await api.post('/cart/add', { product_id: productId, quantity });
       console.log('Cart add response:', response);

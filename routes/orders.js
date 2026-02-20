@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const { authenticateToken } = require('../middleware/auth');
+const { blockAdminCommerce } = require('../middleware/commerceAccess');
 
 // All order routes require authentication
 router.use(authenticateToken);
+router.use(blockAdminCommerce);
 
 // Create order
 router.post('/', async (req, res) => {

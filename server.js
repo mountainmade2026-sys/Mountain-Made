@@ -108,6 +108,7 @@ app.use((req, res, next) => {
 
     const pathname = req.path || '/';
     const wholesalePages = new Set(['/wholesale', '/wholesale.html']);
+    const adminPages = new Set(['/admin', '/admin.html']);
     const publicOnlyPages = new Set([
       '/',
       '/index.html',
@@ -124,8 +125,9 @@ app.use((req, res, next) => {
     ]);
 
     const isWholesalePage = wholesalePages.has(pathname);
+    const isAdminPage = adminPages.has(pathname);
     const isPublicOnlyPage = publicOnlyPages.has(pathname);
-    if (!isWholesalePage && !isPublicOnlyPage) return next();
+    if (!isWholesalePage && !isAdminPage && !isPublicOnlyPage) return next();
 
     const sanitizeToken = (token) => {
       if (!token) return null;
@@ -152,6 +154,16 @@ app.use((req, res, next) => {
     const role = claims?.role;
     const isApprovedWholesale = !isBlocked && role === 'wholesale' && !!claims?.is_approved;
     const isAdmin = !isBlocked && (role === 'admin' || role === 'super_admin');
+
+    if (isAdminPage) {
+      if (isAdmin) return next();
+
+      if (!claims) {
+        return res.redirect(302, `/login?redirect=${encodeURIComponent('/admin')}`);
+      }
+
+      return res.redirect(302, '/');
+    }
 
     if (isWholesalePage) {
       if (isApprovedWholesale || isAdmin) return next();
