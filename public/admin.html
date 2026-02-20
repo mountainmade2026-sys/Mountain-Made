@@ -3360,6 +3360,15 @@
 
                 return await originalApiRequest(endpoint, options);
             } catch (error) {
+                if (typeof isAuthExpiredError === 'function' && isAuthExpiredError(error)) {
+                    if (!window.__adminAuthRedirecting) {
+                        window.__adminAuthRedirecting = true;
+                        if (typeof handleAdminSessionExpired === 'function') {
+                            handleAdminSessionExpired();
+                        }
+                    }
+                }
+
                 if (auth?.currentUser?.role === 'admin' && isAdminLicenseExpiredError(error)) {
                     triggerAdminLicenseLockdown();
                 }
@@ -4609,10 +4618,20 @@
 
         function isAuthExpiredError(error) {
             const message = String(error?.message || '').toLowerCase();
-            return message.includes('invalid or expired token') || message.includes('unauthorized');
+            return (
+                message.includes('invalid or expired token') ||
+                message.includes('unauthorized') ||
+                message.includes('user account no longer exists') ||
+                message.includes('forbidden')
+            );
         }
 
         function handleAdminSessionExpired() {
+            if (window.__adminAuthRedirecting) {
+                return;
+            }
+            window.__adminAuthRedirecting = true;
+
             try {
                 localStorage.removeItem('token');
             } catch (_) {}
@@ -4662,7 +4681,9 @@
                     }
                 } catch (e) {
                     if (isAuthExpiredError(e)) {
-                        handleAdminSessionExpired();
+                        if (!window.__adminAuthRedirecting) {
+                            handleAdminSessionExpired();
+                        }
                         return;
                     }
 
