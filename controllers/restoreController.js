@@ -8,6 +8,62 @@ const { initializeDatabase } = require('../config/database');
 const User = require('../models/User');
 const execAsync = promisify(exec);
 
+const resolveRestoreDbConfig = () => {
+  const databaseUrl = String(process.env.DATABASE_URL || '').trim();
+  const direct = {
+    dbHost: String(process.env.DB_HOST || '').trim(),
+    dbPort: String(process.env.DB_PORT || '').trim(),
+    dbName: String(process.env.DB_NAME || '').trim(),
+    dbUser: String(process.env.DB_USER || '').trim(),
+    dbPassword: String(process.env.DB_PASSWORD || ''),
+    sslMode: String(process.env.PGSSLMODE || '').trim()
+  };
+
+  if (direct.dbHost && direct.dbPort && direct.dbName && direct.dbUser) {
+    return {
+      dbHost: direct.dbHost,
+      dbPort: direct.dbPort,
+      dbName: direct.dbName,
+      dbUser: direct.dbUser,
+      dbPassword: direct.dbPassword,
+      sslMode: direct.sslMode
+    };
+  }
+
+  if (!databaseUrl) {
+    return {
+      dbHost: direct.dbHost || 'localhost',
+      dbPort: direct.dbPort || '5432',
+      dbName: direct.dbName || 'mountain_made',
+      dbUser: direct.dbUser || 'postgres',
+      dbPassword: direct.dbPassword || '',
+      sslMode: direct.sslMode
+    };
+  }
+
+  try {
+    const parsed = new URL(databaseUrl);
+    const querySslMode = parsed.searchParams.get('sslmode') || '';
+    return {
+      dbHost: parsed.hostname || direct.dbHost || 'localhost',
+      dbPort: parsed.port || direct.dbPort || '5432',
+      dbName: (parsed.pathname || '').replace(/^\//, '') || direct.dbName || 'mountain_made',
+      dbUser: parsed.username || direct.dbUser || 'postgres',
+      dbPassword: parsed.password || direct.dbPassword || '',
+      sslMode: direct.sslMode || querySslMode || (parsed.hostname.includes('render.com') ? 'require' : '')
+    };
+  } catch (_) {
+    return {
+      dbHost: direct.dbHost || 'localhost',
+      dbPort: direct.dbPort || '5432',
+      dbName: direct.dbName || 'mountain_made',
+      dbUser: direct.dbUser || 'postgres',
+      dbPassword: direct.dbPassword || '',
+      sslMode: direct.sslMode
+    };
+  }
+};
+
 const decodeCopyValue = (value) => {
   if (value === '\\N') {
     return null;
@@ -399,14 +455,14 @@ exports.restoreDatabase = async (req, res) => {
     const ordersDataInSql = await inspectTableDataInSql(sqlFilePath, 'orders');
     const orderItemsDataInSql = await inspectTableDataInSql(sqlFilePath, 'order_items');
 
-    // Get DB credentials
-    const dbHost = process.env.DB_HOST || 'localhost';
-    const dbPort = process.env.DB_PORT || '5432';
-    const dbName = process.env.DB_NAME || 'mountain_made';
-    const dbUser = process.env.DB_USER || 'postgres';
-    const dbPassword = process.env.DB_PASSWORD || '';
+    // Get DB credentials (prefer DATABASE_URL when DB_* is not provided)
+    const { dbHost, dbPort, dbName, dbUser, dbPassword, sslMode } = resolveRestoreDbConfig();
     const psqlBinary = process.env.PSQL_PATH || 'psql';
-    const env = { ...process.env, PGPASSWORD: dbPassword };
+    const env = {
+      ...process.env,
+      PGPASSWORD: dbPassword,
+      ...(sslMode ? { PGSSLMODE: sslMode } : {})
+    };
 
     // Step 1: Reset schema so restore doesn't fail with duplicate rows (e.g., existing admin/user IDs)
     await db.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;');

@@ -4607,6 +4607,27 @@
             return (resp && resp.orders) ? resp.orders : [];
         }
 
+        function isAuthExpiredError(error) {
+            const message = String(error?.message || '').toLowerCase();
+            return message.includes('invalid or expired token') || message.includes('unauthorized');
+        }
+
+        function handleAdminSessionExpired() {
+            try {
+                localStorage.removeItem('token');
+            } catch (_) {}
+
+            if (__pendingOrdersWatcherTimer) {
+                clearInterval(__pendingOrdersWatcherTimer);
+                __pendingOrdersWatcherTimer = null;
+            }
+
+            showAlert('Admin session expired. Please login again.', 'error');
+            setTimeout(() => {
+                window.location.replace('/login?admin=true');
+            }, 400);
+        }
+
         function startPendingOrdersWatcher() {
             if (__pendingOrdersWatcherTimer) return;
 
@@ -4640,6 +4661,11 @@
                         notifyNewPendingOrder();
                     }
                 } catch (e) {
+                    if (isAuthExpiredError(e)) {
+                        handleAdminSessionExpired();
+                        return;
+                    }
+
                     // Silent failure (network/auth)
                     console.warn('Pending order watcher error:', e);
                 }
