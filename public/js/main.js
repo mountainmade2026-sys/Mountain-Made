@@ -1243,7 +1243,7 @@ async function loadSiteLogo() {
 
         const textImageHtml = isAdminRoute
           ? `<img src="${brandTextImagePath}" alt="Brand Text" style="height: 28px; max-width: 210px; width: auto; object-fit: contain; display: block;" onerror="this.style.display='none';">`
-          : `<img src="${brandTextImagePath}" alt="Brand Text" style="height: clamp(72px, 11vw, 110px); max-width: min(74vw, 760px); width: auto; object-fit: contain; display: block;" onerror="this.style.display='none';">`;
+          : `<img src="${brandTextImagePath}" alt="Brand Text" style="height: clamp(26px, 5.5vw, 36px); max-width: min(64vw, 340px); width: auto; object-fit: contain; display: block;" onerror="this.style.display='none';">`;
 
         brand.innerHTML = `
           <span style="display:inline-flex; align-items:center; gap:0.15rem; white-space:nowrap;">
