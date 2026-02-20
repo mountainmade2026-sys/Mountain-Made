@@ -132,8 +132,8 @@
 
             <form id="login-form">
                 <div class="form-group">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" id="email" class="form-input" required>
+                    <label class="form-label">Email or Phone</label>
+                    <input type="text" id="login-identifier" class="form-input" placeholder="Enter email or phone number" required>
                 </div>
 
                 <div class="form-group">
@@ -155,7 +155,7 @@
                             <button id="google-login-btn" class="google-login-btn" type="button" style="display: flex; align-items: center; background: #fff; border: 1px solid #e0e0e0; border-radius: 20px; padding: 0.4rem 0.75rem; font-size: 0.8rem; font-weight: 500; box-shadow: 0 2px 8px rgba(60,64,67,0.08); cursor: pointer; transition: box-shadow 0.2s;">
                 <img src="images/google_logo.svg" alt="Google Logo" style="height:18px;width:18px;margin-right:6px;"> Log in with Google
               </button>
-              <button class="phone-login-btn" style="display: flex; align-items: center; background: #fff; border: 1px solid #e0e0e0; border-radius: 20px; padding: 0.4rem 0.75rem; font-size: 0.8rem; font-weight: 500; box-shadow: 0 2px 8px rgba(60,64,67,0.08); cursor: pointer; transition: box-shadow 0.2s;">
+              <button id="phone-login-btn" class="phone-login-btn" type="button" style="display: flex; align-items: center; background: #fff; border: 1px solid #e0e0e0; border-radius: 20px; padding: 0.4rem 0.75rem; font-size: 0.8rem; font-weight: 500; box-shadow: 0 2px 8px rgba(60,64,67,0.08); cursor: pointer; transition: box-shadow 0.2s;">
                                 <img src="images/phone_icon.svg" alt="Phone Icon" style="height:18px;width:18px;margin-right:6px;"> Log in with Phone
               </button>
             </div>
@@ -181,11 +181,11 @@
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('email').value;
+            const identifier = document.getElementById('login-identifier').value;
             const password = document.getElementById('password').value;
 
             try {
-                const result = await auth.login(email, password);
+                const result = await auth.login(identifier, password);
 
                 // Dynamic redirect based on role
                 const role = result.user.role;
@@ -310,6 +310,15 @@
 
         if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', startGoogleLogin);
+        }
+
+        const phoneLoginBtn = document.getElementById('phone-login-btn');
+        const loginIdentifierInput = document.getElementById('login-identifier');
+        if (phoneLoginBtn && loginIdentifierInput) {
+            phoneLoginBtn.addEventListener('click', () => {
+                loginIdentifierInput.focus();
+                loginIdentifierInput.placeholder = 'Enter phone (e.g. +91XXXXXXXXXX or 10-digit)';
+            });
         }
 
         loadGoogleClientConfig();

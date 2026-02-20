@@ -7,8 +7,8 @@ const authRateStore = new Map();
 
 const authRateLimit = ({ windowMs, maxAttempts }) => (req, res, next) => {
 	const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-	const email = String(req.body?.email || '').trim().toLowerCase();
-	const key = `${ip}:${email}:${req.path}`;
+	const loginIdentifier = String(req.body?.identifier || req.body?.email || req.body?.phone || '').trim().toLowerCase();
+	const key = `${ip}:${loginIdentifier}:${req.path}`;
 	const now = Date.now();
 
 	const existing = authRateStore.get(key);

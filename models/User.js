@@ -155,6 +155,21 @@ class User {
     return result.rows[0];
   }
 
+  static async findByPhone(phone) {
+    const normalized = String(phone || '').trim();
+    const digitsOnly = normalized.replace(/\D/g, '');
+    const query = `
+      SELECT *
+      FROM users
+      WHERE phone = $1
+         OR regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') = $2
+      ORDER BY id ASC
+      LIMIT 1
+    `;
+    const result = await db.query(query, [normalized, digitsOnly]);
+    return result.rows[0];
+  }
+
   static async findById(id) {
     const query = 'SELECT * FROM users WHERE id = $1';
     const result = await db.query(query, [id]);

@@ -245,18 +245,34 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, identifier, phone, password } = req.body || {};
 
-    const normalizedEmail = (email || '').trim().toLowerCase();
-
-    if (!normalizedEmail || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+    const rawIdentifier = String(identifier || email || phone || '').trim();
+    if (!rawIdentifier || !password) {
+      return res.status(400).json({ error: 'Email/phone and password are required.' });
     }
 
-    // Find user
-    const user = await User.findByEmail(normalizedEmail);
+    const looksLikeEmail = rawIdentifier.includes('@');
+    let user = null;
+
+    if (looksLikeEmail) {
+      const normalizedEmail = rawIdentifier.toLowerCase();
+      user = await User.findByEmail(normalizedEmail);
+    } else {
+      let normalizedPhone;
+      try {
+        normalizedPhone = normalizePhoneToE164(rawIdentifier);
+      } catch (_) {
+        normalizedPhone = rawIdentifier;
+      }
+      user = await User.findByPhone(normalizedPhone);
+      if (!user) {
+        user = await User.findByPhone(rawIdentifier);
+      }
+    }
+
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      return res.status(401).json({ error: 'Invalid email/phone or password.' });
     }
 
     // Check if user is blocked
@@ -267,7 +283,7 @@ exports.login = async (req, res) => {
     // Verify password
     const isValidPassword = await User.verifyPassword(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      return res.status(401).json({ error: 'Invalid email/phone or password.' });
     }
 
     // Generate token
