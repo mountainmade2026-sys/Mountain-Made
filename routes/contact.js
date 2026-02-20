@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const nodemailer = require('nodemailer');
+const https = require('https');
 const { optionalAuth } = require('../middleware/auth');
 
 const DEFAULT_SUPPORT_EMAIL = 'hello@mountain-made.com';
@@ -10,6 +11,8 @@ const SMTP_CONNECTION_TIMEOUT_MS = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_
 const SMTP_GREETING_TIMEOUT_MS = parseInt(process.env.SMTP_GREETING_TIMEOUT_MS || '10000', 10);
 const SMTP_SOCKET_TIMEOUT_MS = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS || '15000', 10);
 const CONTACT_EMAIL_FORWARD_TIMEOUT_MS = parseInt(process.env.CONTACT_EMAIL_FORWARD_TIMEOUT_MS || '12000', 10);
+
+const RESEND_REQUEST_TIMEOUT_MS = parseInt(process.env.RESEND_REQUEST_TIMEOUT_MS || '12000', 10);
 
 function withTimeout(promise, timeoutMs, label = 'operation') {
   const ms = Number(timeoutMs);
@@ -23,6 +26,117 @@ function withTimeout(promise, timeoutMs, label = 'operation') {
   return Promise.race([promise, timeoutPromise]).finally(() => {
     if (timer) clearTimeout(timer);
   });
+}
+
+function httpJsonRequest({ method, hostname, path, headers, body, timeoutMs }) {
+  const payload = body ? JSON.stringify(body) : '';
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+    ...(headers || {})
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        method: method || 'POST',
+        hostname,
+        path,
+        headers: requestHeaders
+      },
+      (res) => {
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          const statusCode = res.statusCode || 0;
+          let parsed = null;
+          if (data) {
+            try {
+              parsed = JSON.parse(data);
+            } catch (_) {
+              parsed = null;
+            }
+          }
+
+          if (statusCode >= 200 && statusCode < 300) {
+            return resolve({ statusCode, data: parsed, raw: data });
+          }
+
+          const msg =
+            (parsed && (parsed.message || parsed.error)) ||
+            data ||
+            `HTTP ${statusCode}`;
+          const err = new Error(msg);
+          err.statusCode = statusCode;
+          err.response = parsed;
+          return reject(err);
+        });
+      }
+    );
+
+    const ms = Number(timeoutMs);
+    if (Number.isFinite(ms) && ms > 0) {
+      req.setTimeout(ms, () => {
+        req.destroy(new Error(`HTTP request timed out after ${ms}ms`));
+      });
+    }
+
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+function canUseResend() {
+  const key = String(process.env.RESEND_API_KEY || '').trim();
+  const from = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  return !!key && !!from;
+}
+
+async function forwardContactMessageByResend(payload) {
+  const apiKey = String(process.env.RESEND_API_KEY || '').trim();
+  const fromEmail = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  if (!apiKey || !fromEmail) {
+    return { sent: false, reason: 'resend_not_configured' };
+  }
+
+  const toEmail = await getBusinessSupportEmail();
+
+  const subject = `New Contact Message - ${payload.subject || 'No Subject'}`;
+  const text = [
+    `Name: ${payload.full_name || '-'}`,
+    `Email: ${payload.email || '-'}`,
+    `Phone: ${payload.phone || '-'}`,
+    `Source: ${payload.source_page || '-'}`,
+    `Submitted At: ${new Date().toISOString()}`,
+    '',
+    `Subject: ${payload.subject || '-'}`,
+    '',
+    'Message:',
+    payload.message || '-'
+  ].join('\n');
+
+  await httpJsonRequest({
+    method: 'POST',
+    hostname: 'api.resend.com',
+    path: '/emails',
+    headers: {
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: {
+      from: fromEmail,
+      to: [toEmail],
+      subject,
+      text,
+      replyTo: payload.email || undefined
+    },
+    timeoutMs: RESEND_REQUEST_TIMEOUT_MS
+  });
+
+  return { sent: true, recipient: toEmail, provider: 'resend' };
 }
 
 async function getBusinessSupportEmail() {
@@ -65,6 +179,15 @@ function createSmtpTransporter() {
 }
 
 async function forwardContactMessageByEmail(payload) {
+  // Prefer HTTPS-based provider when configured (avoids SMTP network blocks/timeouts).
+  if (canUseResend()) {
+    return await withTimeout(
+      forwardContactMessageByResend(payload),
+      CONTACT_EMAIL_FORWARD_TIMEOUT_MS,
+      'Resend send'
+    );
+  }
+
   const transporter = createSmtpTransporter();
   if (!transporter) {
     return { sent: false, reason: 'smtp_not_configured' };
