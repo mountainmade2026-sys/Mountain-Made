@@ -40,6 +40,8 @@ router.get('/google/config', authController.getGoogleConfig);
 router.post('/google', registerRateLimit, authController.googleAuth);
 router.post('/phone/send-otp', otpSendRateLimit, authController.sendPhoneOtp);
 router.post('/phone/verify-otp', otpVerifyRateLimit, authController.verifyPhoneOtp);
+router.post('/phone/login/send-otp', otpSendRateLimit, authController.sendPhoneLoginOtp);
+router.post('/phone/login/verify-otp', otpVerifyRateLimit, authController.verifyPhoneLoginOtp);
 router.post('/logout', authController.logout);
 router.get('/check', optionalAuth, authController.checkAuth);
 

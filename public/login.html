@@ -160,6 +160,28 @@
               </button>
             </div>
 
+            <div id="phone-login-panel" class="hidden" style="margin-top: 0.85rem; padding: 0.75rem; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: rgba(255,255,255,0.85);">
+                <div class="form-group" style="margin-bottom: 0.6rem;">
+                    <label class="form-label" style="margin-bottom: 0.35rem;">Type your registered phone number</label>
+                    <input type="text" id="phone-login-number" class="form-input" placeholder="e.g. +91XXXXXXXXXX or 10-digit">
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.6rem;">
+                    <button id="phone-find-btn" type="button" class="btn btn-secondary" style="flex:1; min-width: 170px;">
+                        <i class="fas fa-search"></i> Find Phone Number
+                    </button>
+                </div>
+                <div id="phone-otp-wrap" class="hidden">
+                    <div class="form-group" style="margin-bottom: 0.6rem;">
+                        <label class="form-label" style="margin-bottom: 0.35rem;">Enter OTP</label>
+                        <input type="text" id="phone-login-otp" class="form-input" placeholder="Enter OTP code" inputmode="numeric" maxlength="8">
+                    </div>
+                    <button id="phone-verify-btn" type="button" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-check-circle"></i> Verify OTP and Login
+                    </button>
+                </div>
+                <small id="phone-login-status" style="display:block; margin-top:0.5rem; color:#374151;"></small>
+            </div>
+
             <div style="text-align: center; margin-top: 1.5rem;">
                 <p style="color: #374151; font-weight: 500; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">Don't have an account? <a href="/register" id="register-link" style="color: #059669; font-weight: 600; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">Register here</a></p>
             </div>
@@ -171,6 +193,21 @@
         // Shared login for all roles (customer, wholesale, admin)
         const urlParams = new URLSearchParams(window.location.search);
         const redirectUrl = urlParams.get('redirect');
+
+        function redirectByRole(user) {
+            const role = user?.role;
+            const isApproved = !!user?.is_approved;
+
+            if (role === 'admin' || role === 'super_admin') {
+                window.location.replace('/admin');
+            } else if (role === 'wholesale' && isApproved) {
+                window.location.replace('/wholesale');
+            } else if (redirectUrl) {
+                window.location.replace(redirectUrl);
+            } else {
+                window.location.replace('/');
+            }
+        }
 
         // Update register link to include redirect parameter
         if (redirectUrl) {
@@ -186,23 +223,7 @@
 
             try {
                 const result = await auth.login(identifier, password);
-
-                // Dynamic redirect based on role
-                const role = result.user.role;
-                const isApproved = result.user.is_approved;
-
-                if (role === 'admin' || role === 'super_admin') {
-                    // Admins always go to admin panel
-                    window.location.replace('/admin');
-                } else if (role === 'wholesale' && isApproved) {
-                    // Approved wholesale users go to wholesale hub
-                    window.location.replace('/wholesale');
-                } else if (redirectUrl) {
-                    // Public / wholesale users can be redirected to a specific page
-                    window.location.replace(redirectUrl);
-                } else {
-                    window.location.replace('/');
-                }
+                redirectByRole(result.user);
             } catch (error) {
                 showAlert('Login failed: ' + error.message, 'error');
             }
@@ -225,16 +246,7 @@
         // Check if already logged in
         auth.checkAuth().then(user => {
             if (!user) return;
-
-            if (user.role === 'admin' || user.role === 'super_admin') {
-                window.location.replace('/admin');
-            } else if (user.role === 'wholesale' && user.is_approved) {
-                window.location.replace('/wholesale');
-            } else if (redirectUrl) {
-                window.location.replace(redirectUrl);
-            } else {
-                window.location.replace('/');
-            }
+            redirectByRole(user);
         });
 
         // Google login
@@ -267,18 +279,7 @@
                 }
 
                 const result = await api.post('/auth/google', { id_token: response.credential });
-
-                const role = result?.user?.role;
-                const isApproved = !!result?.user?.is_approved;
-                if (role === 'admin' || role === 'super_admin') {
-                    window.location.replace('/admin');
-                } else if (role === 'wholesale' && isApproved) {
-                    window.location.replace('/wholesale');
-                } else if (redirectUrl) {
-                    window.location.replace(redirectUrl);
-                } else {
-                    window.location.replace('/');
-                }
+                redirectByRole(result?.user);
             } catch (error) {
                 const msg = String(error?.message || error || 'Google login failed.');
                 const needsRegistration = /Phone verification is required before registration/i.test(msg);
@@ -313,11 +314,98 @@
         }
 
         const phoneLoginBtn = document.getElementById('phone-login-btn');
-        const loginIdentifierInput = document.getElementById('login-identifier');
-        if (phoneLoginBtn && loginIdentifierInput) {
+        const phoneLoginPanel = document.getElementById('phone-login-panel');
+        const phoneNumberInput = document.getElementById('phone-login-number');
+        const phoneOtpInput = document.getElementById('phone-login-otp');
+        const phoneFindBtn = document.getElementById('phone-find-btn');
+        const phoneVerifyBtn = document.getElementById('phone-verify-btn');
+        const phoneOtpWrap = document.getElementById('phone-otp-wrap');
+        const phoneLoginStatus = document.getElementById('phone-login-status');
+        let phoneForOtp = '';
+
+        if (phoneLoginBtn && phoneLoginPanel) {
             phoneLoginBtn.addEventListener('click', () => {
-                loginIdentifierInput.focus();
-                loginIdentifierInput.placeholder = 'Enter phone (e.g. +91XXXXXXXXXX or 10-digit)';
+                phoneLoginPanel.classList.toggle('hidden');
+                if (!phoneLoginPanel.classList.contains('hidden')) {
+                    phoneNumberInput?.focus();
+                }
+            });
+        }
+
+        if (phoneFindBtn && phoneNumberInput) {
+            phoneFindBtn.addEventListener('click', async () => {
+                const phone = String(phoneNumberInput.value || '').trim();
+                if (!phone) {
+                    showAlert('Please type your registered phone number.', 'error');
+                    return;
+                }
+
+                try {
+                    phoneFindBtn.disabled = true;
+                    phoneFindBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finding...';
+
+                    const data = await api.post('/auth/phone/login/send-otp', { phone });
+                    phoneForOtp = data?.phone || phone;
+                    if (phoneOtpWrap) phoneOtpWrap.classList.remove('hidden');
+                    if (phoneLoginStatus) {
+                        phoneLoginStatus.textContent = `Sent OTP to ${phoneForOtp}`;
+                        phoneLoginStatus.style.color = '#166534';
+                    }
+                    showAlert('OTP sent to your registered number.', 'success');
+                } catch (error) {
+                    phoneForOtp = '';
+                    if (phoneOtpWrap) phoneOtpWrap.classList.add('hidden');
+                    const msg = String(error?.message || 'Failed to find phone number.');
+                    if (phoneLoginStatus) {
+                        phoneLoginStatus.textContent = msg;
+                        phoneLoginStatus.style.color = '#b91c1c';
+                    }
+                    showAlert(msg, 'error');
+                } finally {
+                    phoneFindBtn.disabled = false;
+                    phoneFindBtn.innerHTML = '<i class="fas fa-search"></i> Find Phone Number';
+                }
+            });
+        }
+
+        if (phoneVerifyBtn && phoneOtpInput) {
+            phoneVerifyBtn.addEventListener('click', async () => {
+                const code = String(phoneOtpInput.value || '').trim();
+                const typedPhone = String(phoneNumberInput?.value || '').trim();
+                const phone = phoneForOtp || typedPhone;
+
+                if (!phone || !code) {
+                    showAlert('Please enter phone and OTP code.', 'error');
+                    return;
+                }
+
+                try {
+                    phoneVerifyBtn.disabled = true;
+                    phoneVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+
+                    const result = await api.post('/auth/phone/login/verify-otp', { phone, code });
+                    const isAdminLike = result?.user?.role === 'admin' || result?.user?.role === 'super_admin';
+                    if (result?.token && !isAdminLike) {
+                        localStorage.setItem('token', result.token);
+                    } else {
+                        localStorage.removeItem('token');
+                    }
+
+                    auth.currentUser = result?.user || null;
+                    auth.updateUI();
+                    showAlert('Phone login successful.', 'success');
+                    redirectByRole(result?.user);
+                } catch (error) {
+                    const msg = String(error?.message || 'OTP verification failed.');
+                    if (phoneLoginStatus) {
+                        phoneLoginStatus.textContent = msg;
+                        phoneLoginStatus.style.color = '#b91c1c';
+                    }
+                    showAlert(msg, 'error');
+                } finally {
+                    phoneVerifyBtn.disabled = false;
+                    phoneVerifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify OTP and Login';
+                }
             });
         }
 

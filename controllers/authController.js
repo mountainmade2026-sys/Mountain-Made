@@ -492,6 +492,84 @@ exports.verifyPhoneOtp = async (req, res) => {
   }
 };
 
+exports.sendPhoneLoginOtp = async (req, res) => {
+  try {
+    if (!twilioClient || !TWILIO_VERIFY_SERVICE_SID) {
+      return res.status(503).json({ error: 'Phone OTP is not configured on server.' });
+    }
+
+    const phoneE164 = normalizePhoneToE164(req.body?.phone);
+    const existingUser = await User.findByPhone(phoneE164);
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'This phone number is not registered.' });
+    }
+
+    if (existingUser.is_blocked) {
+      return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' });
+    }
+
+    await twilioClient.verify.v2.services(TWILIO_VERIFY_SERVICE_SID)
+      .verifications
+      .create({ to: phoneE164, channel: 'sms' });
+
+    return res.json({ message: 'OTP sent successfully.', phone: phoneE164 });
+  } catch (error) {
+    console.error('Send phone login OTP error:', error);
+    return res.status(400).json({ error: 'Failed to send OTP. Please check phone number.' });
+  }
+};
+
+exports.verifyPhoneLoginOtp = async (req, res) => {
+  try {
+    if (!twilioClient || !TWILIO_VERIFY_SERVICE_SID) {
+      return res.status(503).json({ error: 'Phone OTP is not configured on server.' });
+    }
+
+    const phoneE164 = normalizePhoneToE164(req.body?.phone);
+    const code = String(req.body?.code || '').trim();
+    if (!code) {
+      return res.status(400).json({ error: 'OTP code is required.' });
+    }
+
+    const check = await twilioClient.verify.v2.services(TWILIO_VERIFY_SERVICE_SID)
+      .verificationChecks
+      .create({ to: phoneE164, code });
+
+    if (String(check.status || '').toLowerCase() !== 'approved') {
+      return res.status(400).json({ error: 'Invalid OTP code.' });
+    }
+
+    const user = await User.findByPhone(phoneE164);
+    if (!user) {
+      return res.status(404).json({ error: 'This phone number is not registered.' });
+    }
+
+    if (user.is_blocked) {
+      return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' });
+    }
+
+    const token = generateToken(user);
+    res.cookie('token', token, buildCookieOptions(req, user.role));
+
+    return res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        is_approved: user.is_approved,
+        profile_photo: user.profile_photo
+      }
+    });
+  } catch (error) {
+    console.error('Verify phone login OTP error:', error);
+    return res.status(400).json({ error: 'OTP verification failed.' });
+  }
+};
+
 exports.logout = (req, res) => {
   res.clearCookie('token', buildCookieOptions(req));
   res.json({ message: 'Logout successful' });
