@@ -90,17 +90,40 @@ function httpJsonRequest({ method, hostname, path, headers, body, timeoutMs }) {
   });
 }
 
+function normalizeEmailAddress(value) {
+  const v = String(value || '').trim().replace(/^"|"$/g, '');
+  if (!v) return null;
+
+  // Plain email.
+  const emailOnly = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+  if (emailOnly.test(v)) return v;
+
+  // Friendly name format: Name <email@domain.com>
+  const match = v.match(/^.*<\s*([^>\s]+)\s*>\s*$/);
+  if (match && match[1] && emailOnly.test(match[1])) {
+    return v;
+  }
+
+  return null;
+}
+
 function canUseResend() {
   const key = String(process.env.RESEND_API_KEY || '').trim();
-  const from = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  const from = normalizeEmailAddress(process.env.RESEND_FROM_EMAIL);
   return !!key && !!from;
 }
 
 async function forwardContactMessageByResend(payload) {
   const apiKey = String(process.env.RESEND_API_KEY || '').trim();
-  const fromEmail = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  const fromEmail = normalizeEmailAddress(process.env.RESEND_FROM_EMAIL);
   if (!apiKey || !fromEmail) {
-    return { sent: false, reason: 'resend_not_configured' };
+    return {
+      sent: false,
+      reason: 'resend_not_configured',
+      errorMessage: !apiKey
+        ? 'RESEND_API_KEY is missing'
+        : 'RESEND_FROM_EMAIL is missing or invalid (use email@domain.com or Name <email@domain.com>)'
+    };
   }
 
   const toEmail = await getBusinessSupportEmail();
