@@ -12,12 +12,18 @@
     <style>
         /* Search Section Styles */
         .search-section {
-            background-image: linear-gradient(180deg, rgba(15,56,35,0.72), rgba(15,56,35,0.58)), url('/images/search-bg.gif');
+            background-image: linear-gradient(180deg, rgba(15,56,35,0.72), rgba(15,56,35,0.58));
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             padding: clamp(2.5rem, 8vw, 5rem) 1rem;
             margin-bottom: 2.5rem;
+        }
+
+        @media (min-width: 769px) {
+            .search-section {
+                background-image: linear-gradient(180deg, rgba(15,56,35,0.72), rgba(15,56,35,0.58)), url('/images/search-bg.gif');
+            }
         }
 
         .search-container {

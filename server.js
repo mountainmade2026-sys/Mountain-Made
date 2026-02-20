@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
@@ -98,6 +99,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(compression());
 
 // Page-level access guard: keep wholesale and public experiences separated.
 // - Approved wholesale users are redirected away from public browsing pages.
