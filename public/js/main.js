@@ -66,15 +66,19 @@ const api = {
     try {
       const token = localStorage.getItem('token');
 
+      const fetchOptions = { ...(options || {}) };
+      const timeoutMs = fetchOptions.timeoutMs;
+      delete fetchOptions.timeoutMs;
+
       const headers = {
-        ...(options.headers || {})
+        ...(fetchOptions.headers || {})
       };
 
       // Only set JSON content-type when sending a JSON body.
       // Setting it for GET requests can cause unnecessary preflights in some hosted/network setups.
-      const hasBody = options.body !== undefined && options.body !== null;
+      const hasBody = fetchOptions.body !== undefined && fetchOptions.body !== null;
       const hasExplicitContentType = Object.keys(headers).some(k => k.toLowerCase() === 'content-type');
-      const isFormDataBody = (typeof FormData !== 'undefined') && (options.body instanceof FormData);
+      const isFormDataBody = (typeof FormData !== 'undefined') && (fetchOptions.body instanceof FormData);
       if (hasBody && !hasExplicitContentType && !isFormDataBody) {
         headers['Content-Type'] = 'application/json';
       }
@@ -83,11 +87,36 @@ const api = {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-        credentials: 'include'
-      });
+      let timeoutId = null;
+      let abortController = null;
+      if (
+        timeoutMs != null &&
+        Number.isFinite(Number(timeoutMs)) &&
+        Number(timeoutMs) > 0 &&
+        !fetchOptions.signal &&
+        typeof AbortController !== 'undefined'
+      ) {
+        abortController = new AbortController();
+        fetchOptions.signal = abortController.signal;
+        timeoutId = setTimeout(() => {
+          try {
+            abortController.abort();
+          } catch (_) {
+            // ignore
+          }
+        }, Number(timeoutMs));
+      }
+
+      let response;
+      try {
+        response = await fetch(`${API_BASE}${endpoint}`, {
+          ...fetchOptions,
+          headers,
+          credentials: 'include'
+        });
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
 
       // Try to parse JSON, but handle empty/non-JSON responses gracefully
       let data = null;

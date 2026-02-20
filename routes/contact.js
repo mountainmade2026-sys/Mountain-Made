@@ -6,6 +6,25 @@ const { optionalAuth } = require('../middleware/auth');
 
 const DEFAULT_SUPPORT_EMAIL = 'hello@mountain-made.com';
 
+const SMTP_CONNECTION_TIMEOUT_MS = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS || '10000', 10);
+const SMTP_GREETING_TIMEOUT_MS = parseInt(process.env.SMTP_GREETING_TIMEOUT_MS || '10000', 10);
+const SMTP_SOCKET_TIMEOUT_MS = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS || '15000', 10);
+const CONTACT_EMAIL_FORWARD_TIMEOUT_MS = parseInt(process.env.CONTACT_EMAIL_FORWARD_TIMEOUT_MS || '12000', 10);
+
+function withTimeout(promise, timeoutMs, label = 'operation') {
+  const ms = Number(timeoutMs);
+  if (!Number.isFinite(ms) || ms <= 0) return promise;
+
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 async function getBusinessSupportEmail() {
   try {
     const result = await db.query(
@@ -38,7 +57,10 @@ function createSmtpTransporter() {
     auth: {
       user: smtpUser,
       pass: smtpPass
-    }
+    },
+    connectionTimeout: Number.isFinite(SMTP_CONNECTION_TIMEOUT_MS) ? SMTP_CONNECTION_TIMEOUT_MS : 10000,
+    greetingTimeout: Number.isFinite(SMTP_GREETING_TIMEOUT_MS) ? SMTP_GREETING_TIMEOUT_MS : 10000,
+    socketTimeout: Number.isFinite(SMTP_SOCKET_TIMEOUT_MS) ? SMTP_SOCKET_TIMEOUT_MS : 15000
   });
 }
 
@@ -65,13 +87,17 @@ async function forwardContactMessageByEmail(payload) {
     payload.message || '-'
   ].join('\n');
 
-  await transporter.sendMail({
-    from: fromEmail,
-    to: toEmail,
-    replyTo: payload.email || undefined,
-    subject,
-    text
-  });
+  await withTimeout(
+    transporter.sendMail({
+      from: fromEmail,
+      to: toEmail,
+      replyTo: payload.email || undefined,
+      subject,
+      text
+    }),
+    CONTACT_EMAIL_FORWARD_TIMEOUT_MS,
+    'SMTP send'
+  );
 
   return { sent: true, recipient: toEmail };
 }
