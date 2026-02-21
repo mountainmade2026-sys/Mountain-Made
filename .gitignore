@@ -44,6 +44,9 @@ build/
 *.tmp
 *.temp
 
+# Temporary folders
+tmp/
+
 # Database dumps
 *.sql
 *.dump
@@ -51,3 +54,10 @@ build/
 
 # PowerShell scripts (optional)
 restart-server.ps1
+
+# Android (Capacitor)
+android/local.properties
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/

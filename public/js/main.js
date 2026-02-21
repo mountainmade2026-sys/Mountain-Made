@@ -1,7 +1,8 @@
 // Mountain Made 2.0 - Main JavaScript Utilities
 
 const APK_API_ORIGIN = 'https://mountain-made.onrender.com';
-const API_BASE = (window.location.protocol === 'file:')
+const IS_NATIVE_CAPACITOR = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+const API_BASE = (window.location.protocol === 'file:' || IS_NATIVE_CAPACITOR)
   ? `${APK_API_ORIGIN}/api`
   : '/api';
 
