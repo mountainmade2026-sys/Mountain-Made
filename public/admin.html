@@ -3240,6 +3240,11 @@
             audienceEl.addEventListener('change', syncSingleVisibility);
             syncSingleVisibility();
 
+            identifierTypeEl.addEventListener('change', () => {
+                identifierEl.value = '';
+                suggestionsEl.innerHTML = '';
+            });
+
             let searchTimer = null;
             identifierEl.addEventListener('input', () => {
                 const mode = String(audienceEl.value || 'all');

@@ -119,20 +119,37 @@ async function getMessageRecipients({ audience, identifierType, identifier }) {
 
     if (safeIdentifierType === 'id') {
       const parsedId = parseInt(safeIdentifier, 10);
-      if (!Number.isFinite(parsedId)) {
+      if (Number.isFinite(parsedId)) {
+        const result = await db.query(
+          `
+            SELECT id, email, full_name, phone, role, is_blocked
+            FROM users
+            WHERE id = $1
+              AND role IN ('customer', 'wholesale')
+            LIMIT 1
+          `,
+          [parsedId]
+        );
+        return result.rows;
+      }
+
+      // Fallback: allow pasted email/value even when "id" is selected
+      const fallbackEmail = normalizeEmail(safeIdentifier);
+      if (!fallbackEmail) {
         throw new Error('Invalid user id.');
       }
-      const result = await db.query(
+
+      const fallbackResult = await db.query(
         `
           SELECT id, email, full_name, phone, role, is_blocked
           FROM users
-          WHERE id = $1
+          WHERE LOWER(email) = LOWER($1)
             AND role IN ('customer', 'wholesale')
           LIMIT 1
         `,
-        [parsedId]
+        [fallbackEmail]
       );
-      return result.rows;
+      return fallbackResult.rows;
     }
 
     // default to email
