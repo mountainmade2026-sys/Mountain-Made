@@ -447,6 +447,24 @@
                 width: 100% !important;
             }
 
+            .product-card .product-action-row {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.35rem;
+                width: 100%;
+            }
+
+            .product-card .product-action-row .btn {
+                width: auto !important;
+                min-width: 0;
+                padding: 0.35rem 0.35rem;
+                font-size: 0.76rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                line-height: 1.1;
+            }
+
             /* Show the Filters button on mobile */
             .products-filter-toggle {
                 display: inline-flex;
@@ -510,6 +528,29 @@
                 margin-left: 0 !important;
                 padding: 0.35rem 0.4rem;
                 font-size: 0.8rem;
+            }
+
+            .product-card .product-action-row {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.25rem;
+                width: 100%;
+            }
+
+            .product-card .product-action-row .btn {
+                width: auto !important;
+                min-width: 0;
+                padding: 0.34rem 0.22rem;
+                font-size: 0.68rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                line-height: 1.05;
+                gap: 0.15rem;
+            }
+
+            .product-card .product-action-row .btn i {
+                display: none;
             }
 
             .filter-section {
