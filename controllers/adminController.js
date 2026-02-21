@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const twilio = require('twilio');
+const https = require('https');
 const db = require('../config/database');
 const { getLicenseState, LICENSE_EXPIRED_MESSAGE } = require('../middleware/adminLicense');
 
@@ -19,6 +20,12 @@ const EMAIL_SEND_TIMEOUT_MS = 20000;
 const SMS_SEND_TIMEOUT_MS = 20000;
 const SMS_CONCURRENCY = 8;
 const EMAIL_BCC_CHUNK_SIZE = 40;
+
+function canUseResendForAdmin() {
+  const key = String(process.env.RESEND_API_KEY || '').trim();
+  const from = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  return !!key && !!from;
+}
 
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
@@ -61,6 +68,62 @@ function createSmtpTransporterOrThrow() {
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000
+  });
+}
+
+function httpJsonRequest({ method, hostname, path, headers, body }) {
+  const payload = body ? JSON.stringify(body) : '';
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+    ...(headers || {})
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({ method: method || 'POST', hostname, path, headers: requestHeaders }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        const statusCode = res.statusCode || 0;
+        if (statusCode >= 200 && statusCode < 300) {
+          return resolve();
+        }
+        return reject(new Error(data || `HTTP ${statusCode}`));
+      });
+    });
+
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function sendViaResend({ toList, subject, message }) {
+  if (!canUseResendForAdmin()) {
+    throw new Error('Resend is not configured.');
+  }
+
+  const recipients = (toList || []).filter(Boolean);
+  if (!recipients.length) {
+    return;
+  }
+
+  await httpJsonRequest({
+    method: 'POST',
+    hostname: 'api.resend.com',
+    path: '/emails',
+    headers: {
+      Authorization: `Bearer ${String(process.env.RESEND_API_KEY || '').trim()}`
+    },
+    body: {
+      from: String(process.env.RESEND_FROM_EMAIL || '').trim(),
+      to: recipients,
+      subject: subject || 'Message from Mountain Made',
+      text: message
+    }
   });
 }
 
@@ -1689,13 +1752,15 @@ exports.sendAdminMessage = async (req, res) => {
 
     let transporter = null;
     let fromEmail = '';
+    const resendAvailable = canUseResendForAdmin();
+    let firstEmailError = '';
     if (sendEmail) {
       try {
         transporter = createSmtpTransporterOrThrow();
         fromEmail = getSmtpConfig().fromEmail;
       } catch (e) {
-        // Only fail if email is the only requested channel
-        if (!sendSms) {
+        // Only fail if email is the only requested channel and Resend is unavailable
+        if (!sendSms && !resendAvailable) {
           return res.status(503).json({ error: e.message || 'Email is not configured.' });
         }
       }
@@ -1720,7 +1785,30 @@ exports.sendAdminMessage = async (req, res) => {
       summary.email.skippedNoEmail = activeRecipients.length - emailTargets.length;
 
       if (!transporter || !fromEmail) {
-        summary.email.failed += emailTargets.length;
+        if (resendAvailable && emailTargets.length > 0) {
+          const chunks = chunkArray(emailTargets, EMAIL_BCC_CHUNK_SIZE);
+          for (const chunk of chunks) {
+            summary.email.attempted += chunk.length;
+            try {
+              await withTimeout(
+                sendViaResend({ toList: chunk, subject, message }),
+                EMAIL_SEND_TIMEOUT_MS,
+                'Resend email timed out.'
+              );
+              summary.email.sent += chunk.length;
+            } catch (err) {
+              summary.email.failed += chunk.length;
+              if (!firstEmailError) {
+                firstEmailError = String(err?.message || 'Resend email failed.');
+              }
+            }
+          }
+        } else {
+          summary.email.failed += emailTargets.length;
+          if (!firstEmailError) {
+            firstEmailError = 'Email sender is not configured.';
+          }
+        }
       } else if (emailTargets.length > 0) {
         if (audience === 'single' || emailTargets.length <= 2) {
           for (const toEmail of emailTargets) {
@@ -1737,8 +1825,29 @@ exports.sendAdminMessage = async (req, res) => {
                 'Email sending timed out.'
               );
               summary.email.sent++;
-            } catch (_) {
-              summary.email.failed++;
+            } catch (err) {
+              // fallback to resend for this recipient if available
+              if (resendAvailable) {
+                try {
+                  await withTimeout(
+                    sendViaResend({ toList: [toEmail], subject, message }),
+                    EMAIL_SEND_TIMEOUT_MS,
+                    'Resend email timed out.'
+                  );
+                  summary.email.sent++;
+                  continue;
+                } catch (fallbackErr) {
+                  summary.email.failed++;
+                  if (!firstEmailError) {
+                    firstEmailError = String(fallbackErr?.message || err?.message || 'Email sending failed.');
+                  }
+                }
+              } else {
+                summary.email.failed++;
+                if (!firstEmailError) {
+                  firstEmailError = String(err?.message || 'Email sending failed.');
+                }
+              }
             }
           }
         } else {
@@ -1758,8 +1867,28 @@ exports.sendAdminMessage = async (req, res) => {
                 'Bulk email sending timed out.'
               );
               summary.email.sent += chunk.length;
-            } catch (_) {
-              summary.email.failed += chunk.length;
+            } catch (err) {
+              if (resendAvailable) {
+                try {
+                  await withTimeout(
+                    sendViaResend({ toList: chunk, subject, message }),
+                    EMAIL_SEND_TIMEOUT_MS,
+                    'Resend bulk email timed out.'
+                  );
+                  summary.email.sent += chunk.length;
+                  continue;
+                } catch (fallbackErr) {
+                  summary.email.failed += chunk.length;
+                  if (!firstEmailError) {
+                    firstEmailError = String(fallbackErr?.message || err?.message || 'Bulk email failed.');
+                  }
+                }
+              } else {
+                summary.email.failed += chunk.length;
+                if (!firstEmailError) {
+                  firstEmailError = String(err?.message || 'Bulk email failed.');
+                }
+              }
             }
           }
         }
@@ -1802,6 +1931,12 @@ exports.sendAdminMessage = async (req, res) => {
       } catch (_) {
         // ignore close errors
       }
+    }
+
+    if (sendEmail && summary.email.attempted > 0 && summary.email.sent === 0 && !sendSms) {
+      return res.status(502).json({
+        error: firstEmailError || 'Failed to send emails. Check SMTP/Resend configuration and sender domain verification.'
+      });
     }
 
     return res.json({
