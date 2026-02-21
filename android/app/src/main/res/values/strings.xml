@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mountain Made</string>
+    <string name="title_activity_main">Mountain Made</string>
+    <string name="package_name">com.mountainmade.app</string>
+    <string name="custom_url_scheme">com.mountainmade.app</string>
+</resources>
