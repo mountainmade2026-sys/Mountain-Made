@@ -42,6 +42,8 @@ router.post('/phone/send-otp', otpSendRateLimit, authController.sendPhoneOtp);
 router.post('/phone/verify-otp', otpVerifyRateLimit, authController.verifyPhoneOtp);
 router.post('/phone/login/send-otp', otpSendRateLimit, authController.sendPhoneLoginOtp);
 router.post('/phone/login/verify-otp', otpVerifyRateLimit, authController.verifyPhoneLoginOtp);
+router.post('/forgot-password/send-otp', otpSendRateLimit, authController.sendForgotPasswordOtp);
+router.post('/forgot-password/reset', otpVerifyRateLimit, authController.resetPasswordWithOtp);
 router.post('/logout', authController.logout);
 router.get('/check', optionalAuth, authController.checkAuth);
 

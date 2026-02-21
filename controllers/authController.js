@@ -4,6 +4,8 @@ const db = require('../config/database');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const twilio = require('twilio');
+const nodemailer = require('nodemailer');
+const https = require('https');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
@@ -14,6 +16,94 @@ const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : nul
 const twilioClient = (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN)
   ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
   : null;
+
+const forgotPasswordOtpStore = new Map();
+const FORGOT_OTP_EXPIRY_MS = 10 * 60 * 1000;
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const canUseResendForAuth = () => {
+  const key = String(process.env.RESEND_API_KEY || '').trim();
+  const from = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  return !!key && !!from;
+};
+
+const createSmtpTransporterForAuth = () => {
+  const smtpHost = String(process.env.SMTP_HOST || '').trim();
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+  const smtpUser = String(process.env.SMTP_USER || '').trim();
+  const smtpPass = String(process.env.SMTP_PASS || '').trim();
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: Number.isFinite(smtpPort) ? smtpPort : 587,
+    secure: Number(smtpPort) === 465,
+    auth: { user: smtpUser, pass: smtpPass }
+  });
+};
+
+const httpJsonRequest = ({ method, hostname, path, headers, body }) => {
+  const payload = body ? JSON.stringify(body) : '';
+  const requestHeaders = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+    ...(headers || {})
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({ method: method || 'POST', hostname, path, headers: requestHeaders }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        const statusCode = res.statusCode || 0;
+        if (statusCode >= 200 && statusCode < 300) {
+          return resolve();
+        }
+        return reject(new Error(data || `HTTP ${statusCode}`));
+      });
+    });
+
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+};
+
+const sendForgotPasswordEmailOtp = async (toEmail, code) => {
+  const subject = 'Your Mountain Made password reset OTP';
+  const text = `Your OTP is ${code}. It expires in 10 minutes.`;
+
+  if (canUseResendForAuth()) {
+    await httpJsonRequest({
+      method: 'POST',
+      hostname: 'api.resend.com',
+      path: '/emails',
+      headers: { Authorization: `Bearer ${String(process.env.RESEND_API_KEY || '').trim()}` },
+      body: {
+        from: String(process.env.RESEND_FROM_EMAIL || '').trim(),
+        to: [toEmail],
+        subject,
+        text
+      }
+    });
+    return;
+  }
+
+  const transporter = createSmtpTransporterForAuth();
+  if (!transporter) {
+    throw new Error('Email OTP is not configured on server.');
+  }
+
+  const fromEmail = String(process.env.SMTP_FROM_EMAIL || '').trim() || String(process.env.SMTP_USER || '').trim();
+  await transporter.sendMail({ from: fromEmail, to: toEmail, subject, text });
+};
 
 // Generate JWT token
 const generateToken = (user) => {
@@ -567,6 +657,121 @@ exports.verifyPhoneLoginOtp = async (req, res) => {
   } catch (error) {
     console.error('Verify phone login OTP error:', error);
     return res.status(400).json({ error: 'OTP verification failed.' });
+  }
+};
+
+exports.sendForgotPasswordOtp = async (req, res) => {
+  try {
+    const rawIdentifier = String(req.body?.identifier || req.body?.email || req.body?.phone || '').trim();
+    if (!rawIdentifier) {
+      return res.status(400).json({ error: 'Email or phone is required.' });
+    }
+
+    const isEmail = rawIdentifier.includes('@');
+    if (isEmail) {
+      const email = normalizeEmail(rawIdentifier);
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: 'This email is not registered.' });
+      }
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      forgotPasswordOtpStore.set(`email:${email}`, {
+        userId: user.id,
+        code,
+        expiresAt: Date.now() + FORGOT_OTP_EXPIRY_MS
+      });
+
+      await sendForgotPasswordEmailOtp(email, code);
+      return res.json({ message: 'OTP sent to your email.', channel: 'email' });
+    }
+
+    if (!twilioClient || !TWILIO_VERIFY_SERVICE_SID) {
+      return res.status(503).json({ error: 'Phone OTP is not configured on server.' });
+    }
+
+    const phoneE164 = normalizePhoneToE164(rawIdentifier);
+    const user = await User.findByPhone(phoneE164);
+    if (!user) {
+      return res.status(404).json({ error: 'This phone number is not registered.' });
+    }
+
+    await twilioClient.verify.v2.services(TWILIO_VERIFY_SERVICE_SID)
+      .verifications
+      .create({ to: phoneE164, channel: 'sms' });
+
+    return res.json({ message: 'OTP sent to your phone.', channel: 'phone', phone: phoneE164 });
+  } catch (error) {
+    console.error('Send forgot password OTP error:', error);
+    return res.status(400).json({ error: error.message || 'Failed to send OTP.' });
+  }
+};
+
+exports.resetPasswordWithOtp = async (req, res) => {
+  try {
+    const rawIdentifier = String(req.body?.identifier || req.body?.email || req.body?.phone || '').trim();
+    const otp = String(req.body?.otp || '').trim();
+    const newPassword = String(req.body?.new_password || '').trim();
+    const confirmPassword = String(req.body?.confirm_password || '').trim();
+
+    if (!rawIdentifier || !otp || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Identifier, OTP, new password, and confirm password are required.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirm password do not match.' });
+    }
+
+    const isEmail = rawIdentifier.includes('@');
+    if (isEmail) {
+      const email = normalizeEmail(rawIdentifier);
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: 'This email is not registered.' });
+      }
+
+      const entry = forgotPasswordOtpStore.get(`email:${email}`);
+      if (!entry || entry.expiresAt < Date.now()) {
+        forgotPasswordOtpStore.delete(`email:${email}`);
+        return res.status(400).json({ error: 'OTP expired. Please request a new OTP.' });
+      }
+
+      if (entry.userId !== user.id || entry.code !== otp) {
+        return res.status(400).json({ error: 'Invalid OTP code.' });
+      }
+
+      await User.updatePassword(user.id, newPassword);
+      forgotPasswordOtpStore.delete(`email:${email}`);
+      return res.json({ message: 'Password reset successful.' });
+    }
+
+    if (!twilioClient || !TWILIO_VERIFY_SERVICE_SID) {
+      return res.status(503).json({ error: 'Phone OTP is not configured on server.' });
+    }
+
+    const phoneE164 = normalizePhoneToE164(rawIdentifier);
+    const user = await User.findByPhone(phoneE164);
+    if (!user) {
+      return res.status(404).json({ error: 'This phone number is not registered.' });
+    }
+
+    const check = await twilioClient.verify.v2.services(TWILIO_VERIFY_SERVICE_SID)
+      .verificationChecks
+      .create({ to: phoneE164, code: otp });
+
+    if (String(check.status || '').toLowerCase() !== 'approved') {
+      return res.status(400).json({ error: 'Invalid OTP code.' });
+    }
+
+    await User.updatePassword(user.id, newPassword);
+    return res.json({ message: 'Password reset successful.' });
+  } catch (error) {
+    console.error('Reset password with OTP error:', error);
+    return res.status(400).json({ error: error.message || 'Failed to reset password.' });
   }
 };
 

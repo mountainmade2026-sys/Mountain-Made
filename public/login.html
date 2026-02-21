@@ -144,6 +144,9 @@
                             <i class="fas fa-eye" id="toggle-password-icon"></i>
                         </button>
                     </div>
+                    <div style="text-align:right; margin-top:0.45rem;">
+                        <button id="forgot-password-btn" type="button" style="background:none; border:none; color:#065f46; font-weight:600; cursor:pointer; font-size:0.86rem;">Forgot Password?</button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
@@ -181,6 +184,34 @@
                     </button>
                 </div>
                 <small id="phone-login-status" style="display:block; margin-top:0.5rem; color:#374151;"></small>
+            </div>
+
+            <div id="forgot-password-panel" class="hidden" style="margin-top: 0.85rem; padding: 0.75rem; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: rgba(255,255,255,0.85);">
+                <div class="form-group" style="margin-bottom:0.6rem;">
+                    <label class="form-label" style="margin-bottom:0.35rem;">Email or Phone</label>
+                    <input type="text" id="forgot-identifier" class="form-input" placeholder="Enter registered email or phone">
+                </div>
+                <button id="forgot-send-otp-btn" type="button" class="btn btn-secondary" style="width:100%; margin-bottom:0.6rem;">
+                    <i class="fas fa-paper-plane"></i> Send OTP
+                </button>
+                <div id="forgot-otp-wrap" class="hidden">
+                    <div class="form-group" style="margin-bottom:0.6rem;">
+                        <label class="form-label" style="margin-bottom:0.35rem;">OTP</label>
+                        <input type="text" id="forgot-otp" class="form-input" maxlength="8" inputmode="numeric" placeholder="Enter OTP">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.6rem;">
+                        <label class="form-label" style="margin-bottom:0.35rem;">New Password</label>
+                        <input type="password" id="forgot-new-password" class="form-input" placeholder="Enter new password">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.6rem;">
+                        <label class="form-label" style="margin-bottom:0.35rem;">Confirm Password</label>
+                        <input type="password" id="forgot-confirm-password" class="form-input" placeholder="Confirm new password">
+                    </div>
+                    <button id="forgot-reset-btn" type="button" class="btn btn-primary" style="width:100%;">
+                        <i class="fas fa-key"></i> Reset Password
+                    </button>
+                </div>
+                <small id="forgot-status" style="display:block; margin-top:0.5rem; color:#374151;"></small>
             </div>
 
             <div style="text-align: center; margin-top: 1.5rem;">
@@ -323,6 +354,16 @@
         const phoneOtpWrap = document.getElementById('phone-otp-wrap');
         const phoneLoginStatus = document.getElementById('phone-login-status');
         const phoneOtpCountdown = document.getElementById('phone-otp-countdown');
+        const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+        const forgotPanel = document.getElementById('forgot-password-panel');
+        const forgotIdentifierInput = document.getElementById('forgot-identifier');
+        const forgotSendOtpBtn = document.getElementById('forgot-send-otp-btn');
+        const forgotOtpWrap = document.getElementById('forgot-otp-wrap');
+        const forgotOtpInput = document.getElementById('forgot-otp');
+        const forgotNewPasswordInput = document.getElementById('forgot-new-password');
+        const forgotConfirmPasswordInput = document.getElementById('forgot-confirm-password');
+        const forgotResetBtn = document.getElementById('forgot-reset-btn');
+        const forgotStatus = document.getElementById('forgot-status');
         let phoneForOtp = '';
         let phoneOtpTimer = null;
         let phoneOtpSecondsLeft = 0;
@@ -364,8 +405,106 @@
         if (phoneLoginBtn && phoneLoginPanel) {
             phoneLoginBtn.addEventListener('click', () => {
                 phoneLoginPanel.classList.toggle('hidden');
+                if (forgotPanel && !forgotPanel.classList.contains('hidden')) {
+                    forgotPanel.classList.add('hidden');
+                }
                 if (!phoneLoginPanel.classList.contains('hidden')) {
                     phoneNumberInput?.focus();
+                }
+            });
+        }
+
+        if (forgotPasswordBtn && forgotPanel) {
+            forgotPasswordBtn.addEventListener('click', () => {
+                forgotPanel.classList.toggle('hidden');
+                if (phoneLoginPanel && !phoneLoginPanel.classList.contains('hidden')) {
+                    phoneLoginPanel.classList.add('hidden');
+                }
+                if (!forgotPanel.classList.contains('hidden')) {
+                    forgotIdentifierInput?.focus();
+                }
+            });
+        }
+
+        if (forgotSendOtpBtn && forgotIdentifierInput) {
+            forgotSendOtpBtn.addEventListener('click', async () => {
+                const identifier = String(forgotIdentifierInput.value || '').trim();
+                if (!identifier) {
+                    showAlert('Please enter your registered email or phone.', 'error');
+                    return;
+                }
+
+                try {
+                    forgotSendOtpBtn.disabled = true;
+                    forgotSendOtpBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+                    const response = await api.post('/auth/forgot-password/send-otp', { identifier });
+                    if (forgotOtpWrap) forgotOtpWrap.classList.remove('hidden');
+                    if (forgotStatus) {
+                        forgotStatus.textContent = response?.message || 'OTP sent successfully.';
+                        forgotStatus.style.color = '#166534';
+                    }
+                    showAlert(response?.message || 'OTP sent successfully.', 'success');
+                } catch (error) {
+                    const msg = String(error?.message || 'Failed to send OTP.');
+                    if (forgotStatus) {
+                        forgotStatus.textContent = msg;
+                        forgotStatus.style.color = '#b91c1c';
+                    }
+                    showAlert(msg, 'error');
+                } finally {
+                    forgotSendOtpBtn.disabled = false;
+                    forgotSendOtpBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP';
+                }
+            });
+        }
+
+        if (forgotResetBtn) {
+            forgotResetBtn.addEventListener('click', async () => {
+                const identifier = String(forgotIdentifierInput?.value || '').trim();
+                const otp = String(forgotOtpInput?.value || '').trim();
+                const newPassword = String(forgotNewPasswordInput?.value || '').trim();
+                const confirmPassword = String(forgotConfirmPasswordInput?.value || '').trim();
+
+                if (!identifier || !otp || !newPassword || !confirmPassword) {
+                    showAlert('Please fill all reset fields.', 'error');
+                    return;
+                }
+
+                try {
+                    forgotResetBtn.disabled = true;
+                    forgotResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+
+                    await api.post('/auth/forgot-password/reset', {
+                        identifier,
+                        otp,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    });
+
+                    if (forgotStatus) {
+                        forgotStatus.textContent = 'Password reset successful. Logging you in...';
+                        forgotStatus.style.color = '#166534';
+                    }
+
+                    try {
+                        const loginResult = await auth.login(identifier, newPassword);
+                        showAlert('Password reset successful. Logged in.', 'success');
+                        redirectByRole(loginResult?.user);
+                        return;
+                    } catch (_) {
+                        showAlert('Password reset successful. Please login with new password.', 'success');
+                    }
+                } catch (error) {
+                    const msg = String(error?.message || 'Failed to reset password.');
+                    if (forgotStatus) {
+                        forgotStatus.textContent = msg;
+                        forgotStatus.style.color = '#b91c1c';
+                    }
+                    showAlert(msg, 'error');
+                } finally {
+                    forgotResetBtn.disabled = false;
+                    forgotResetBtn.innerHTML = '<i class="fas fa-key"></i> Reset Password';
                 }
             });
         }
