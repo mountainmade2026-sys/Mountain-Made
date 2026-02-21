@@ -337,6 +337,55 @@
             margin-bottom: 0;
         }
 
+        .product-card .stock-status {
+            margin-top: 0.35rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            padding: 0.2rem 0.5rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
+        }
+
+        .product-card .stock-status.in-stock {
+            color: #0f7a42;
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.35);
+            animation: stockGlowGreen 1.8s ease-in-out infinite;
+        }
+
+        .product-card .stock-status.low-stock {
+            color: #b45309;
+            background: rgba(245, 158, 11, 0.14);
+            border-color: rgba(245, 158, 11, 0.4);
+            animation: stockGlowAmber 1.8s ease-in-out infinite;
+        }
+
+        .product-card .stock-status.out-of-stock {
+            color: #b91c1c;
+            background: rgba(239, 68, 68, 0.14);
+            border-color: rgba(239, 68, 68, 0.42);
+            animation: stockGlowRed 1.8s ease-in-out infinite;
+        }
+
+        @keyframes stockGlowGreen {
+            0%, 100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+            50% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.45); }
+        }
+
+        @keyframes stockGlowAmber {
+            0%, 100% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+            50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.42); }
+        }
+
+        @keyframes stockGlowRed {
+            0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+            50% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.44); }
+        }
+
         .product-card .card-footer {
             gap: 0.35rem;
             padding: 0 0.75rem 0.7rem;
@@ -893,10 +942,17 @@
                                 const retail = discount != null && discount < base ? discount : base;
                                 const sale = useWholesale ? parseFloat(p.wholesale_price) : retail;
                                 const showDiscount = !useWholesale && discount != null && discount < base;
-                                if (showDiscount) {
-                                    return `<div class="product-price"><span class="price-original">${formatCurrency(base)}</span> <span class="price-discount">${formatCurrency(sale)}</span></div>`;
+                                const stockQty = Number(p.stock_quantity || 0);
+                                let stockHtml = '<div class="stock-status in-stock"><i class="fas fa-check-circle"></i> In Stock</div>';
+                                if (stockQty === 0) {
+                                    stockHtml = '<div class="stock-status out-of-stock"><i class="fas fa-times-circle"></i> Out of Stock</div>';
+                                } else if (stockQty < 10) {
+                                    stockHtml = '<div class="stock-status low-stock"><i class="fas fa-exclamation-circle"></i> Low Stock</div>';
                                 }
-                                return `<div class="product-price">${formatCurrency(sale)}</div>`;
+                                if (showDiscount) {
+                                    return `<div class="product-price"><span class="price-original">${formatCurrency(base)}</span> <span class="price-discount">${formatCurrency(sale)}</span></div>${stockHtml}`;
+                                }
+                                return `<div class="product-price">${formatCurrency(sale)}</div>${stockHtml}`;
                             })()}
                         </div>
                     </a>
