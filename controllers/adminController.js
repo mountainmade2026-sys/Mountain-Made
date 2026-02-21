@@ -15,6 +15,11 @@ const twilioClient = (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN)
   ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
   : null;
 
+const EMAIL_SEND_TIMEOUT_MS = 20000;
+const SMS_SEND_TIMEOUT_MS = 20000;
+const SMS_CONCURRENCY = 8;
+const EMAIL_BCC_CHUNK_SIZE = 40;
+
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -49,8 +54,57 @@ function createSmtpTransporterOrThrow() {
     host: smtpHost,
     port: smtpPort,
     secure: Number(smtpPort) === 465,
-    auth: { user: smtpUser, pass: smtpPass }
+    auth: { user: smtpUser, pass: smtpPass },
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 200,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
+}
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(timeoutMessage || 'Operation timed out.'));
+    }, timeoutMs);
+
+    Promise.resolve(promise)
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function chunkArray(items, size) {
+  const safeSize = Math.max(1, size || 1);
+  const chunks = [];
+  for (let index = 0; index < items.length; index += safeSize) {
+    chunks.push(items.slice(index, index + safeSize));
+  }
+  return chunks;
+}
+
+async function runWithConcurrency(items, concurrency, handler) {
+  const safeConcurrency = Math.max(1, Number(concurrency) || 1);
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < items.length) {
+      const current = cursor;
+      cursor += 1;
+      await handler(items[current], current);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(safeConcurrency, items.length) }, () => worker());
+  await Promise.all(workers);
 }
 
 async function getMessageRecipients({ audience, identifierType, identifier }) {
@@ -1642,51 +1696,94 @@ exports.sendAdminMessage = async (req, res) => {
       sms: { attempted: 0, sent: 0, skippedNoPhone: 0, failed: 0 }
     };
 
-    // Send one-by-one to avoid leaking addresses and to keep it simple
-    for (const user of activeRecipients) {
-      const toEmail = normalizeEmail(user.email);
-      const toPhone = normalizePhone(user.phone);
+    if (sendEmail) {
+      const emailTargets = activeRecipients
+        .map((user) => normalizeEmail(user.email))
+        .filter((value) => !!value);
+      summary.email.skippedNoEmail = activeRecipients.length - emailTargets.length;
 
-      if (sendEmail) {
-        if (!toEmail) {
-          summary.email.skippedNoEmail++;
-        } else if (!transporter || !fromEmail) {
-          summary.email.failed++;
+      if (!transporter || !fromEmail) {
+        summary.email.failed += emailTargets.length;
+      } else if (emailTargets.length > 0) {
+        if (audience === 'single' || emailTargets.length <= 2) {
+          for (const toEmail of emailTargets) {
+            summary.email.attempted++;
+            try {
+              await withTimeout(
+                transporter.sendMail({
+                  from: fromEmail,
+                  to: toEmail,
+                  subject: subject || 'Message from Mountain Made',
+                  text: message
+                }),
+                EMAIL_SEND_TIMEOUT_MS,
+                'Email sending timed out.'
+              );
+              summary.email.sent++;
+            } catch (_) {
+              summary.email.failed++;
+            }
+          }
         } else {
-          summary.email.attempted++;
-          try {
-            await transporter.sendMail({
-              from: fromEmail,
-              to: toEmail,
-              subject: subject || 'Message from Mountain Made',
-              text: message
-            });
-            summary.email.sent++;
-          } catch (e) {
-            summary.email.failed++;
+          const chunks = chunkArray(emailTargets, EMAIL_BCC_CHUNK_SIZE);
+          for (const chunk of chunks) {
+            summary.email.attempted += chunk.length;
+            try {
+              await withTimeout(
+                transporter.sendMail({
+                  from: fromEmail,
+                  to: fromEmail,
+                  bcc: chunk,
+                  subject: subject || 'Message from Mountain Made',
+                  text: message
+                }),
+                EMAIL_SEND_TIMEOUT_MS,
+                'Bulk email sending timed out.'
+              );
+              summary.email.sent += chunk.length;
+            } catch (_) {
+              summary.email.failed += chunk.length;
+            }
           }
         }
       }
+    }
 
-      if (sendSms) {
-        if (!toPhone) {
-          summary.sms.skippedNoPhone++;
-        } else if (!twilioClient || !TWILIO_FROM_NUMBER) {
-          summary.sms.failed++;
-        } else {
+    if (sendSms) {
+      const smsTargets = activeRecipients
+        .map((user) => normalizePhone(user.phone))
+        .filter((value) => !!value);
+      summary.sms.skippedNoPhone = activeRecipients.length - smsTargets.length;
+
+      if (!twilioClient || !TWILIO_FROM_NUMBER) {
+        summary.sms.failed += smsTargets.length;
+      } else if (smsTargets.length > 0) {
+        const smsBody = subject ? `${subject}\n${message}` : message;
+        await runWithConcurrency(smsTargets, SMS_CONCURRENCY, async (toPhone) => {
           summary.sms.attempted++;
           try {
-            const smsBody = subject ? `${subject}\n${message}` : message;
-            await twilioClient.messages.create({
-              from: TWILIO_FROM_NUMBER,
-              to: toPhone,
-              body: smsBody
-            });
+            await withTimeout(
+              twilioClient.messages.create({
+                from: TWILIO_FROM_NUMBER,
+                to: toPhone,
+                body: smsBody
+              }),
+              SMS_SEND_TIMEOUT_MS,
+              'SMS sending timed out.'
+            );
             summary.sms.sent++;
-          } catch (e) {
+          } catch (_) {
             summary.sms.failed++;
           }
-        }
+        });
+      }
+    }
+
+    if (transporter && typeof transporter.close === 'function') {
+      try {
+        transporter.close();
+      } catch (_) {
+        // ignore close errors
       }
     }
 

@@ -3313,9 +3313,14 @@
             try {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-                if (resultEl) resultEl.textContent = '';
+                if (resultEl) resultEl.textContent = 'Sending in progress...';
 
-                const resp = await api.post('/admin/messages/send', payload);
+                const resp = await Promise.race([
+                    api.post('/admin/messages/send', payload),
+                    new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Sending is taking longer than expected. Please try a smaller audience or retry.')), 180000);
+                    })
+                ]);
                 const summary = resp?.summary;
                 showAlert(resp?.message || 'Message sent.', 'success');
 
