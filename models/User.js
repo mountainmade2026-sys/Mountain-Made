@@ -195,6 +195,18 @@ class User {
     return await bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  static async updatePassword(userId, newPassword) {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const query = `
+      UPDATE users
+      SET password = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id
+    `;
+    const result = await db.query(query, [hashedPassword, userId]);
+    return result.rows[0] || null;
+  }
+
   static async updateApprovalStatus(userId, isApproved) {
     const query = 'UPDATE users SET is_approved = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
     const result = await db.query(query, [isApproved, userId]);

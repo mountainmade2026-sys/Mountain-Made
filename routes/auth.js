@@ -48,5 +48,6 @@ router.get('/check', optionalAuth, authController.checkAuth);
 // Protected routes
 router.get('/profile', authenticateToken, authController.getProfile);
 router.put('/profile', authenticateToken, authController.updateProfile);
+router.put('/change-password', authenticateToken, authController.changePassword);
 
 module.exports = router;

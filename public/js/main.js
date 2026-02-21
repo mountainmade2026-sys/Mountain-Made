@@ -909,6 +909,7 @@ function closeModal(modalId) {
 // Profile management (name, phone, photo)
 const PROFILE_MODAL_ID = 'profile-modal';
 const PROFILE_STYLE_ID = 'profile-modal-styles';
+const ACCOUNT_MODAL_ID = 'account-management-modal';
 function ensureProfileModal() {
   if (document.getElementById(PROFILE_MODAL_ID)) return;
 
@@ -993,6 +994,103 @@ function ensureProfileModal() {
   const saveBtn = modal.querySelector('#profile-save');
   if (saveBtn) {
     saveBtn.addEventListener('click', saveProfileChanges);
+  }
+}
+
+function ensureAccountManagementModal() {
+  if (document.getElementById(ACCOUNT_MODAL_ID)) return;
+
+  const modal = document.createElement('div');
+  modal.id = ACCOUNT_MODAL_ID;
+  modal.className = 'profile-modal hidden';
+  modal.innerHTML = `
+    <div class="profile-modal-dialog">
+      <h3 style="margin:0 0 0.25rem 0;">Account Management</h3>
+      <p class="profile-modal-sub">Change your account password securely.</p>
+      <div class="form-group">
+        <label class="form-label" for="account-old-password">Old Password</label>
+        <input type="password" id="account-old-password" class="form-input" placeholder="Enter old password">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="account-new-password">New Password</label>
+        <input type="password" id="account-new-password" class="form-input" placeholder="Enter new password">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="account-confirm-password">Confirm Password</label>
+        <input type="password" id="account-confirm-password" class="form-input" placeholder="Confirm new password">
+      </div>
+      <div class="profile-modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('${ACCOUNT_MODAL_ID}')">Cancel</button>
+        <button type="button" id="account-password-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const saveBtn = modal.querySelector('#account-password-save');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', changeAccountPassword);
+  }
+}
+
+async function openAccountManagementModal() {
+  ensureProfileModal();
+  ensureAccountManagementModal();
+
+  const oldInput = document.getElementById('account-old-password');
+  const newInput = document.getElementById('account-new-password');
+  const confirmInput = document.getElementById('account-confirm-password');
+
+  if (oldInput) oldInput.value = '';
+  if (newInput) newInput.value = '';
+  if (confirmInput) confirmInput.value = '';
+
+  openModal(ACCOUNT_MODAL_ID);
+  setTimeout(() => oldInput?.focus(), 0);
+}
+
+async function changeAccountPassword() {
+  const oldInput = document.getElementById('account-old-password');
+  const newInput = document.getElementById('account-new-password');
+  const confirmInput = document.getElementById('account-confirm-password');
+
+  const old_password = String(oldInput?.value || '').trim();
+  const new_password = String(newInput?.value || '').trim();
+  const confirm_password = String(confirmInput?.value || '').trim();
+
+  if (!old_password || !new_password || !confirm_password) {
+    showAlert('Please fill old password, new password, and confirm password.', 'error');
+    return;
+  }
+
+  if (new_password.length < 6) {
+    showAlert('New password must be at least 6 characters.', 'error');
+    return;
+  }
+
+  if (new_password !== confirm_password) {
+    showAlert('New password and confirm password do not match.', 'error');
+    return;
+  }
+
+  const saveBtn = document.getElementById('account-password-save');
+  const previousLabel = saveBtn?.innerHTML;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+  }
+
+  try {
+    await api.put('/auth/change-password', { old_password, new_password, confirm_password });
+    showAlert('Password updated successfully. Use your new password next login.', 'success');
+    closeModal(ACCOUNT_MODAL_ID);
+  } catch (error) {
+    showAlert(error.message || 'Failed to change password.', 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = previousLabel || 'Save';
+    }
   }
 }
 
@@ -1352,6 +1450,7 @@ window.uploadProductImage = uploadProductImage;
 window.validateImageFile = validateImageFile;
 window.loadSiteLogo = loadSiteLogo;
 window.openProfileModal = openProfileModal;
+window.openAccountManagementModal = openAccountManagementModal;
 window.optimizeDynamicImages = optimizeDynamicImages;
 // Restore database handler for admin.html
 window.handleRestoreDatabase = async function(event) {

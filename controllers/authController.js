@@ -604,6 +604,46 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.changePassword = async (req, res) => {
+  try {
+    const { old_password, new_password, confirm_password } = req.body || {};
+
+    if (!old_password || !new_password || !confirm_password) {
+      return res.status(400).json({ error: 'Old password, new password, and confirm password are required.' });
+    }
+
+    if (String(new_password).length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    if (String(new_password) !== String(confirm_password)) {
+      return res.status(400).json({ error: 'New password and confirm password do not match.' });
+    }
+
+    const userRecord = await db.query('SELECT id, password FROM users WHERE id = $1', [req.user.id]);
+    const user = userRecord.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const isOldPasswordValid = await User.verifyPassword(old_password, user.password);
+    if (!isOldPasswordValid) {
+      return res.status(400).json({ error: 'Old password is incorrect.' });
+    }
+
+    const isSamePassword = await User.verifyPassword(new_password, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ error: 'New password must be different from old password.' });
+    }
+
+    await User.updatePassword(req.user.id, new_password);
+    return res.json({ message: 'Password updated successfully.' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ error: 'Failed to change password.' });
+  }
+};
+
 exports.checkAuth = async (req, res) => {
   try {
     if (!req.user) {
