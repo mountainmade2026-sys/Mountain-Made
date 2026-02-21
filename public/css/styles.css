@@ -325,6 +325,8 @@ small {
   top: 0;
   left: 0;
   right: 0;
+  width: 100%;
+  max-width: 100vw;
   z-index: var(--z-sticky);
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-primary);
@@ -1449,10 +1451,13 @@ small {
 
   /* Mobile menu open state */
   .navbar-menu.mobile-active {
-    position: absolute;
-    top: 72px;
+    position: fixed;
+    top: 60px;
     left: 0;
     right: 0;
+    width: 100vw;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     background: var(--bg-primary);

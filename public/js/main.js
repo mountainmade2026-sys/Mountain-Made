@@ -1334,8 +1334,31 @@ async function initApp() {
   const navbarMenu = document.querySelector('.navbar-menu');
   
   if (mobileToggle && navbarMenu) {
+    const closeMobileMenu = () => {
+      navbarMenu.classList.remove('mobile-active');
+    };
+
     mobileToggle.addEventListener('click', () => {
       navbarMenu.classList.toggle('mobile-active');
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!navbarMenu.classList.contains('mobile-active')) return;
+      const clickedInsideMenu = !!event.target.closest('.navbar-menu');
+      const clickedToggle = !!event.target.closest('.mobile-menu-toggle');
+      if (!clickedInsideMenu && !clickedToggle) {
+        closeMobileMenu();
+      }
+    });
+
+    navbarMenu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', closeMobileMenu);
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 767) {
+        closeMobileMenu();
+      }
     });
   }
 
