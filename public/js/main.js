@@ -438,58 +438,45 @@ const auth = {
   },
 
   async updateDeliveryAddressUI(force = false) {
-    const brands = document.querySelectorAll('.navbar-brand');
-    if (!brands.length) return;
+    const ensureGlobalDeliverBar = () => {
+      const navbar = document.querySelector('.navbar');
+      if (!navbar) return null;
+
+      let bar = document.getElementById('global-deliver-bar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'global-deliver-bar';
+        bar.className = 'deliver-bar hidden';
+        bar.innerHTML = `
+          <div class="deliver-bar-container">
+            <a class="deliver-bar-link" href="/addresses" title="Manage delivery addresses" aria-label="Manage delivery addresses" aria-live="polite">
+              <span class="deliver-bar-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
+              <span class="deliver-bar-text">
+                <span class="deliver-bar-label"></span>
+                <span class="deliver-bar-value"></span>
+              </span>
+            </a>
+          </div>
+        `;
+        navbar.insertAdjacentElement('afterend', bar);
+      }
+
+      const link = bar.querySelector('.deliver-bar-link');
+      const label = bar.querySelector('.deliver-bar-label');
+      const value = bar.querySelector('.deliver-bar-value');
+      return { bar, link, label, value };
+    };
+
+    const deliverBar = ensureGlobalDeliverBar();
 
     const heroDeliveryCard = document.getElementById('wholesale-deliver-card');
     const heroDeliveryLabel = document.getElementById('wholesale-deliver-label');
     const heroDeliveryValue = document.getElementById('wholesale-deliver-value');
 
-    const ensureNode = (brand) => {
-      let delivery = brand.querySelector('.navbar-deliver-inline');
-      if (delivery && delivery.tagName !== 'A') {
-        delivery.remove();
-        delivery = null;
-      }
-      if (!delivery) {
-        delivery = document.createElement('a');
-        delivery.className = 'navbar-deliver-inline hidden';
-        delivery.href = '/addresses';
-        delivery.title = 'Manage delivery addresses';
-        delivery.setAttribute('aria-label', 'Manage delivery addresses');
-        delivery.setAttribute('aria-live', 'polite');
-        delivery.innerHTML = `
-          <span class="navbar-deliver-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
-          <span class="navbar-deliver-text">
-            <span class="navbar-deliver-label"></span>
-            <span class="navbar-deliver-value"></span>
-          </span>
-        `;
-        brand.appendChild(delivery);
-      }
-
-      let label = delivery.querySelector('.navbar-deliver-label');
-      if (!label) {
-        label = document.createElement('span');
-        label.className = 'navbar-deliver-label';
-        delivery.appendChild(label);
-      }
-
-      let value = delivery.querySelector('.navbar-deliver-value');
-      if (!value) {
-        value = document.createElement('span');
-        value.className = 'navbar-deliver-value';
-        delivery.appendChild(value);
-      }
-
-      return { delivery, label, value };
-    };
-
     if (!this.isAuthenticated() || this.isAdmin()) {
-      brands.forEach((brand) => {
-        const { delivery } = ensureNode(brand);
-        delivery.classList.add('hidden');
-      });
+      if (deliverBar?.bar) {
+        deliverBar.bar.classList.add('hidden');
+      }
 
       if (heroDeliveryCard) {
         heroDeliveryCard.classList.add('hidden');
@@ -506,14 +493,12 @@ const auth = {
 
     const primaryArea = [city, state].filter(Boolean).join(', ');
     const locationText = primaryArea || line1 || 'Add delivery address';
-    const finalLocation = locationText.length > 52 ? `${locationText.slice(0, 49)}...` : locationText;
 
-    brands.forEach((brand) => {
-      const { delivery, label, value } = ensureNode(brand);
-      label.textContent = `Deliver to ${shortName}`;
-      value.textContent = finalLocation;
-      delivery.classList.remove('hidden');
-    });
+    if (deliverBar?.bar && deliverBar.label && deliverBar.value) {
+      deliverBar.label.textContent = `Deliver to ${shortName}`;
+      deliverBar.value.textContent = locationText;
+      deliverBar.bar.classList.remove('hidden');
+    }
 
     if (heroDeliveryCard) {
       if (heroDeliveryLabel) {
@@ -1572,13 +1557,6 @@ function applySiteLogo(logoUrl) {
         ${logoHtml}
         ${textImageHtml}
       </span>
-      <a class="navbar-deliver-inline hidden" href="/addresses" title="Manage delivery addresses" aria-label="Manage delivery addresses" aria-live="polite">
-        <span class="navbar-deliver-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
-        <span class="navbar-deliver-text">
-          <span class="navbar-deliver-label"></span>
-          <span class="navbar-deliver-value"></span>
-        </span>
-      </a>
     `;
   });
 

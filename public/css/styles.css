@@ -349,9 +349,9 @@ small {
 
 .navbar-brand {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
   font-family: 'Playfair Display', serif;
   font-size: var(--text-xl);
   font-weight: var(--font-extrabold);
@@ -366,6 +366,75 @@ small {
   align-items: center;
   gap: var(--space-2);
   white-space: nowrap;
+}
+
+/* Delivery bar shown below the top navbar */
+.deliver-bar {
+  width: 100%;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.deliver-bar-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-6);
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.deliver-bar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  border: 1px solid var(--gray-900);
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  transition: background-color var(--transition-base), transform var(--transition-base);
+}
+
+.deliver-bar-link:hover {
+  background: var(--primary-50);
+  transform: translateY(-1px);
+}
+
+.deliver-bar-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.deliver-bar-text {
+  min-width: 0;
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.deliver-bar-label {
+  font-size: 0.72rem;
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+}
+
+.deliver-bar-value {
+  font-size: 0.9rem;
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(92vw, 720px);
 }
 
 .navbar-deliver-inline {
@@ -1413,6 +1482,14 @@ small {
   .navbar-deliver-inline {
     max-width: 220px;
   }
+
+  .deliver-bar-container {
+    padding: var(--space-2) var(--space-5);
+  }
+
+  .deliver-bar-value {
+    max-width: min(92vw, 520px);
+  }
   
   .navbar-brand .logo-icon {
     font-size: var(--text-xl);
@@ -1488,6 +1565,30 @@ small {
 
   .navbar-deliver-value {
     font-size: 0.62rem;
+  }
+
+  .deliver-bar-container {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .deliver-bar-link {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .deliver-bar-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 0.85rem;
+  }
+
+  .deliver-bar-label {
+    font-size: 0.62rem;
+  }
+
+  .deliver-bar-value {
+    font-size: 0.82rem;
+    max-width: 100%;
   }
   
   .navbar-brand .logo-icon {
