@@ -2979,9 +2979,6 @@
             computedDiscount = Math.max(0, computedDiscount);
             const computedText = Number(computedDiscount).toFixed(2);
             discountInput.value = computedText;
-            if (source === 'adjust') {
-                priceInput.value = computedText;
-            }
             try {
                 discountInput.dispatchEvent(new Event('input', { bubbles: true }));
                 discountInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -7149,6 +7146,9 @@
                 const priceToSave = hasDiscountAdjust && Number.isFinite(parsedDiscountPrice)
                     ? parsedDiscountPrice
                     : parsedPrice;
+                const discountToSave = hasDiscountAdjust
+                    ? null
+                    : parsedDiscountPrice;
 
                 let updateData = {
                     name,
@@ -7157,7 +7157,7 @@
                     homepage_section_id: homepage_section_id ? parseInt(homepage_section_id) : null,
                     price: priceToSave,
                     wholesale_price: wholesale_price ? parseFloat(wholesale_price) : null,
-                    discount_price: parsedDiscountPrice,
+                    discount_price: discountToSave,
                     stock_quantity: parseInt(stock),
                     min_wholesale_qty: parseInt(min_wholesale_qty)
                 };
