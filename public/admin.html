@@ -2938,26 +2938,13 @@
             const discountInput = document.getElementById('edit-product-discount-price');
             if (!priceInput || !adjustInput || !discountInput) return;
 
-            const savedPriceRaw = String(priceInput.getAttribute('data-saved-price') || '').trim();
-            const currentPriceRaw = String(priceInput.value || '').trim();
-            const currentPrice = parseFloat(currentPriceRaw);
-            const savedPrice = parseFloat(savedPriceRaw);
-            const basePrice = Number.isFinite(savedPrice) ? savedPrice : currentPrice;
+            const basePrice = parseFloat(String(priceInput.value || '').trim());
             if (!Number.isFinite(basePrice)) return;
 
             const adjustmentRaw = String(adjustInput.value || '').trim();
             if (!adjustmentRaw) {
                 const savedDiscount = discountInput.getAttribute('data-saved-discount');
                 discountInput.value = savedDiscount || '';
-
-                if (source === 'adjust') {
-                    const restorePriceRaw = String(priceInput.getAttribute('data-saved-price') || '').trim();
-                    if (restorePriceRaw) {
-                        priceInput.value = restorePriceRaw;
-                    }
-                } else if (Number.isFinite(currentPrice)) {
-                    priceInput.setAttribute('data-saved-price', String(currentPrice));
-                }
                 return;
             }
 
@@ -2989,7 +2976,6 @@
             computedDiscount = Math.max(0, computedDiscount);
             const computedText = Number(computedDiscount).toFixed(2);
             discountInput.value = computedText;
-            priceInput.value = computedText;
             try {
                 discountInput.dispatchEvent(new Event('input', { bubbles: true }));
                 discountInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -7125,6 +7111,7 @@
                 const description = document.getElementById('edit-product-description').value;
                 const wholesale_price = document.getElementById('edit-product-wholesale-price').value || null;
                 const discount_price = document.getElementById('edit-product-discount-price').value || null;
+                const discount_adjust_raw = String(document.getElementById('edit-product-discount-adjust')?.value || '').trim();
                 const min_wholesale_qty = document.getElementById('edit-product-min-wholesale').value || 10;
                 const imageFiles = editProductSelectedImages;
 
@@ -7139,19 +7126,32 @@
                     return;
                 }
 
-                if (discount_price && parseFloat(discount_price) >= parseFloat(price)) {
+                const parsedPrice = parseFloat(price);
+                const parsedDiscountPrice = discount_price ? parseFloat(discount_price) : null;
+                const hasDiscountAdjust = discount_adjust_raw.length > 0;
+
+                if (hasDiscountAdjust && !Number.isFinite(parsedDiscountPrice)) {
+                    showAlert('Please enter a valid discount adjustment.', 'error');
+                    return;
+                }
+
+                if (!hasDiscountAdjust && parsedDiscountPrice != null && parsedDiscountPrice >= parsedPrice) {
                     showAlert('Discount price should be less than the main price.', 'error');
                     return;
                 }
+
+                const priceToSave = hasDiscountAdjust && Number.isFinite(parsedDiscountPrice)
+                    ? parsedDiscountPrice
+                    : parsedPrice;
 
                 let updateData = {
                     name,
                     description,
                     category_id: parseInt(category_id),
                     homepage_section_id: homepage_section_id ? parseInt(homepage_section_id) : null,
-                    price: parseFloat(price),
+                    price: priceToSave,
                     wholesale_price: wholesale_price ? parseFloat(wholesale_price) : null,
-                    discount_price: discount_price ? parseFloat(discount_price) : null,
+                    discount_price: parsedDiscountPrice,
                     stock_quantity: parseInt(stock),
                     min_wholesale_qty: parseInt(min_wholesale_qty)
                 };
