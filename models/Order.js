@@ -12,27 +12,44 @@ class Order {
     const query = `
       SELECT order_number
       FROM orders
-      WHERE order_number = $1 OR order_number LIKE $2
+      WHERE order_number LIKE $1
     `;
 
-    const result = await client.query(query, [base, `${base}-%`]);
+    const result = await client.query(query, [`${base}%`]);
     const existing = result.rows.map(r => String(r.order_number || '').trim()).filter(Boolean);
 
     if (!existing.includes(base)) {
       return base;
     }
 
-    let maxSuffix = 1;
+    let maxSuffix = 0;
     for (const orderNumber of existing) {
-      const match = orderNumber.match(new RegExp(`^${base}-(\\d+)$`));
-      if (!match) continue;
-      const suffixValue = parseInt(match[1], 10);
+      if (orderNumber === base) {
+        if (maxSuffix < 1) maxSuffix = 1;
+        continue;
+      }
+
+      let suffixValue = null;
+
+      const plainSuffixMatch = orderNumber.match(new RegExp(`^${base}(\\d+)$`));
+      if (plainSuffixMatch) {
+        suffixValue = parseInt(plainSuffixMatch[1], 10);
+      }
+
+      // Backward compatibility with previously generated dashed IDs.
+      if (!Number.isFinite(suffixValue)) {
+        const dashedSuffixMatch = orderNumber.match(new RegExp(`^${base}-(\\d+)$`));
+        if (dashedSuffixMatch) {
+          suffixValue = parseInt(dashedSuffixMatch[1], 10);
+        }
+      }
+
       if (Number.isFinite(suffixValue) && suffixValue > maxSuffix) {
         maxSuffix = suffixValue;
       }
     }
 
-    return `${base}-${maxSuffix + 1}`;
+    return `${base}${maxSuffix + 1}`;
   }
 
   static async create(orderData) {
@@ -52,7 +69,7 @@ class Order {
         delivery_charge = 0
       } = orderData;
       
-      // Generate unique business order number (MMDDMMYYYY, then MMDDMMYYYY-2, -3... if needed)
+      // Generate unique business order number (MMDDMMYYYY, then MMDDMMYYYY2, MMDDMMYYYY3...)
       const orderBase = this.buildOrderNumberBase(new Date());
       const orderQuery = `
         INSERT INTO orders (
