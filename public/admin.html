@@ -7138,12 +7138,12 @@
                     return;
                 }
 
-                if (!hasDiscountAdjust && parsedDiscountPrice != null && parsedDiscountPrice >= parsedPrice) {
-                    showAlert('Discount price should be less than the main price.', 'error');
+                if (discount_price && !Number.isFinite(parsedDiscountPrice)) {
+                    showAlert('Please enter a valid discount price.', 'error');
                     return;
                 }
 
-                const priceToSave = hasDiscountAdjust && Number.isFinite(parsedDiscountPrice)
+                const priceToSave = Number.isFinite(parsedDiscountPrice)
                     ? parsedDiscountPrice
                     : parsedPrice;
                 const discountToSave = parsedDiscountPrice;
