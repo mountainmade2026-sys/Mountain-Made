@@ -438,6 +438,17 @@ const auth = {
   },
 
   async updateDeliveryAddressUI(force = false) {
+    const shouldShowOnThisPage = () => {
+      const rawPath = String(window.location.pathname || '/');
+      const path = rawPath.endsWith('/') && rawPath.length > 1 ? rawPath.slice(0, -1) : rawPath;
+
+      const isHome = path === '' || path === '/' || path === '/index.html';
+      const isWholesaleDashboard = path === '/wholesale' || path === '/wholesale.html';
+
+      if (this.isWholesale()) return isWholesaleDashboard;
+      return isHome;
+    };
+
     const ensureGlobalDeliverBar = () => {
       const navbar = document.querySelector('.navbar');
       if (!navbar) return null;
@@ -473,7 +484,7 @@ const auth = {
     const heroDeliveryLabel = document.getElementById('wholesale-deliver-label');
     const heroDeliveryValue = document.getElementById('wholesale-deliver-value');
 
-    if (!this.isAuthenticated() || this.isAdmin()) {
+    if (!this.isAuthenticated() || this.isAdmin() || !shouldShowOnThisPage()) {
       if (deliverBar?.bar) {
         deliverBar.bar.classList.add('hidden');
       }
