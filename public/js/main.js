@@ -303,6 +303,8 @@ const theme = {
 // Authentication
 const auth = {
   currentUser: null,
+  _deliveryAddressCache: null,
+  _deliveryAddressCacheAt: 0,
 
   async checkAuth() {
     try {
@@ -404,6 +406,110 @@ const auth = {
 
     // Update all navigation links dynamically
     this.updateNavigationLinks();
+
+    // Update delivery address summary under logo
+    this.updateDeliveryAddressUI();
+  },
+
+  async fetchPrimaryDeliveryAddress(force = false) {
+    if (!this.isAuthenticated() || this.isAdmin()) {
+      this._deliveryAddressCache = null;
+      this._deliveryAddressCacheAt = Date.now();
+      return null;
+    }
+
+    const cacheTtlMs = 45 * 1000;
+    if (!force && this._deliveryAddressCacheAt && (Date.now() - this._deliveryAddressCacheAt) < cacheTtlMs) {
+      return this._deliveryAddressCache;
+    }
+
+    try {
+      const data = await api.get('/addresses');
+      const addresses = Array.isArray(data?.addresses) ? data.addresses : [];
+      const primary = addresses.find(addr => addr?.is_default) || addresses[0] || null;
+      this._deliveryAddressCache = primary;
+      this._deliveryAddressCacheAt = Date.now();
+      return primary;
+    } catch (_) {
+      this._deliveryAddressCache = null;
+      this._deliveryAddressCacheAt = Date.now();
+      return null;
+    }
+  },
+
+  async updateDeliveryAddressUI(force = false) {
+    const brands = document.querySelectorAll('.navbar-brand');
+    if (!brands.length) return;
+
+    const heroDeliveryCard = document.getElementById('wholesale-deliver-card');
+    const heroDeliveryLabel = document.getElementById('wholesale-deliver-label');
+    const heroDeliveryValue = document.getElementById('wholesale-deliver-value');
+
+    const ensureNode = (brand) => {
+      let delivery = brand.querySelector('.navbar-deliver-inline');
+      if (!delivery) {
+        delivery = document.createElement('span');
+        delivery.className = 'navbar-deliver-inline hidden';
+        delivery.setAttribute('aria-live', 'polite');
+        brand.appendChild(delivery);
+      }
+
+      let label = delivery.querySelector('.navbar-deliver-label');
+      if (!label) {
+        label = document.createElement('span');
+        label.className = 'navbar-deliver-label';
+        delivery.appendChild(label);
+      }
+
+      let value = delivery.querySelector('.navbar-deliver-value');
+      if (!value) {
+        value = document.createElement('span');
+        value.className = 'navbar-deliver-value';
+        delivery.appendChild(value);
+      }
+
+      return { delivery, label, value };
+    };
+
+    if (!this.isAuthenticated() || this.isAdmin()) {
+      brands.forEach((brand) => {
+        const { delivery } = ensureNode(brand);
+        delivery.classList.add('hidden');
+      });
+
+      if (heroDeliveryCard) {
+        heroDeliveryCard.classList.add('hidden');
+      }
+      return;
+    }
+
+    const address = await this.fetchPrimaryDeliveryAddress(force);
+    const fullName = String(address?.full_name || this.currentUser?.full_name || '').trim();
+    const shortName = fullName ? fullName.split(' ')[0] : 'Customer';
+    const city = String(address?.city || '').trim();
+    const state = String(address?.state || '').trim();
+    const line1 = String(address?.address_line1 || '').trim();
+
+    const primaryArea = [city, state].filter(Boolean).join(', ');
+    const locationText = primaryArea || line1 || 'Add delivery address';
+    const finalLocation = locationText.length > 52 ? `${locationText.slice(0, 49)}...` : locationText;
+
+    brands.forEach((brand) => {
+      const { delivery, label, value } = ensureNode(brand);
+      label.textContent = `Deliver to ${shortName}`;
+      value.textContent = finalLocation;
+      delivery.classList.remove('hidden');
+    });
+
+    if (heroDeliveryCard) {
+      if (heroDeliveryLabel) {
+        heroDeliveryLabel.textContent = `Deliver to ${shortName}`;
+      }
+      if (heroDeliveryValue) {
+        heroDeliveryValue.textContent = locationText;
+      }
+      heroDeliveryCard.classList.remove('hidden');
+    }
   },
 
   updateAccountDropdownIdentity() {
@@ -1321,6 +1427,7 @@ async function initApp() {
   theme.init();
   
   await auth.checkAuth();
+  await auth.updateDeliveryAddressUI(true);
   await cart.fetch();
   optimizeDynamicImages(document);
   
@@ -1447,12 +1554,20 @@ function applySiteLogo(logoUrl) {
       : `<img src="${brandTextImagePath}" alt="Brand Text" style="height: clamp(26px, 5.5vw, 36px); max-width: min(64vw, 340px); width: auto; object-fit: contain; display: block;" onerror="this.style.display='none';">`;
 
     brand.innerHTML = `
-      <span style="display:inline-flex; align-items:center; gap:0.15rem; white-space:nowrap;">
+      <span class="navbar-brand-main" style="display:inline-flex; align-items:center; gap:0.15rem; white-space:nowrap;">
         ${logoHtml}
         ${textImageHtml}
       </span>
+      <span class="navbar-deliver-inline hidden" aria-live="polite">
+        <span class="navbar-deliver-label"></span>
+        <span class="navbar-deliver-value"></span>
+      </span>
     `;
   });
+
+  if (window.auth && typeof window.auth.updateDeliveryAddressUI === 'function') {
+    window.auth.updateDeliveryAddressUI(true);
+  }
 }
 
 async function loadSiteLogo() {

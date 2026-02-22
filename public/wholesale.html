@@ -45,6 +45,51 @@
             max-width: 680px;
         }
 
+        .wholesale-deliver-card {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 0.75rem 0.95rem;
+            margin: 0 0 1rem;
+            backdrop-filter: blur(8px);
+            max-width: min(100%, 480px);
+        }
+
+        .wholesale-deliver-label {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .wholesale-deliver-value {
+            font-size: 0.98rem;
+            color: #ffffff;
+            font-weight: 600;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .wholesale-deliver-link {
+            font-size: 0.82rem;
+            color: #bfdbfe;
+            text-decoration: none;
+            font-weight: 600;
+            width: fit-content;
+        }
+
+        .wholesale-deliver-link:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
         .wholesale-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -347,6 +392,16 @@
                 font-size: 1rem;
             }
 
+            .wholesale-deliver-card {
+                max-width: 100%;
+                margin-bottom: 0.85rem;
+                padding: 0.65rem 0.75rem;
+            }
+
+            .wholesale-deliver-value {
+                font-size: 0.9rem;
+            }
+
             .stat-card p {
                 font-size: 1.75rem;
             }
@@ -618,6 +673,11 @@
             <div class="wholesale-hero-content">
                 <h1>Welcome to Your Wholesale Portal</h1>
                 <p id="welcome-message">Manage your bulk orders, track shipments, and access exclusive wholesale pricing.</p>
+                <div id="wholesale-deliver-card" class="wholesale-deliver-card hidden" aria-live="polite">
+                    <span class="wholesale-deliver-label"><i class="fas fa-map-marker-alt"></i> <span id="wholesale-deliver-label">Deliver to Customer</span></span>
+                    <span id="wholesale-deliver-value" class="wholesale-deliver-value">Add delivery address</span>
+                    <a href="/addresses" class="wholesale-deliver-link">Manage saved delivery addresses</a>
+                </div>
                 
                 <div class="wholesale-stats">
                     <div class="stat-card">
