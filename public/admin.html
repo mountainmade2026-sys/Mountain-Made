@@ -7146,9 +7146,7 @@
                 const priceToSave = hasDiscountAdjust && Number.isFinite(parsedDiscountPrice)
                     ? parsedDiscountPrice
                     : parsedPrice;
-                const discountToSave = hasDiscountAdjust
-                    ? null
-                    : parsedDiscountPrice;
+                const discountToSave = parsedDiscountPrice;
 
                 let updateData = {
                     name,
