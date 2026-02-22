@@ -2633,9 +2633,10 @@
                                 <div>
                                     <label class="form-label">Discount Price (₹) <small style="color: var(--text-muted); font-weight: normal;">Optional</small></label>
                                     <input type="number" id="edit-product-discount-price" class="form-input" placeholder="0.00" step="0.01">
-                                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">
-                                        <button type="button" class="btn btn-secondary btn-sm" onclick="adjustAdminNumber('edit-product-discount-price', -5, { decimals: 2, min: 0 })">-5</button>
-                                        <button type="button" class="btn btn-secondary btn-sm" onclick="adjustAdminNumber('edit-product-discount-price', 5, { decimals: 2, min: 0 })">+5</button>
+                                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem; align-items:center;">
+                                        <input type="number" id="edit-product-discount-adjust" class="form-input" placeholder="Adjust (e.g. 5)" step="0.01" style="max-width: 160px;">
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="applyAdminDelta('edit-product-discount-price', 'edit-product-discount-adjust', -1, { decimals: 2, min: 0 })">-</button>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="applyAdminDelta('edit-product-discount-price', 'edit-product-discount-adjust', 1, { decimals: 2, min: 0 })">+</button>
                                     </div>
                                 </div>
                                 <div>
@@ -2645,9 +2646,10 @@
                                 <div>
                                     <label class="form-label">Stock Quantity *</label>
                                     <input type="number" id="edit-product-stock" class="form-input" placeholder="0" required>
-                                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">
-                                        <button type="button" class="btn btn-secondary btn-sm" onclick="adjustAdminNumber('edit-product-stock', -5, { integer: true, min: 0 })">-5</button>
-                                        <button type="button" class="btn btn-secondary btn-sm" onclick="adjustAdminNumber('edit-product-stock', 5, { integer: true, min: 0 })">+5</button>
+                                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem; align-items:center;">
+                                        <input type="number" id="edit-product-stock-adjust" class="form-input" placeholder="Adjust (e.g. 10)" step="1" style="max-width: 160px;">
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="applyAdminDelta('edit-product-stock', 'edit-product-stock-adjust', -1, { integer: true, min: 0 })">-</button>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="applyAdminDelta('edit-product-stock', 'edit-product-stock-adjust', 1, { integer: true, min: 0 })">+</button>
                                     </div>
                                 </div>
                             </div>
@@ -2893,6 +2895,18 @@
             } catch (_) {
                 // ignore
             }
+        };
+
+        window.applyAdminDelta = function(targetInputId, deltaInputId, sign, options = {}) {
+            const deltaInput = document.getElementById(deltaInputId);
+            if (!deltaInput) return;
+
+            const raw = String(deltaInput.value || '').trim();
+            const delta = parseFloat(raw);
+            if (!Number.isFinite(delta) || delta === 0) return;
+
+            const direction = Number(sign) < 0 ? -1 : 1;
+            window.adjustAdminNumber(targetInputId, direction * delta, options);
         };
     // Admin dashboard with improved mobile handling
     (function(){
