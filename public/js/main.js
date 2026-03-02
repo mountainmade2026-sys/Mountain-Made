@@ -752,30 +752,189 @@ async function uploadProductImage(fileOrInput) {
 }
 
 // Alert/Notification System
-function showAlert(message, type = 'info') {
-  const alertContainer = document.getElementById('alert-container') || createAlertContainer();
-  
-  const alert = document.createElement('div');
-  alert.className = `alert alert-${type}`;
-  alert.style.cssText = 'padding: 1rem; margin-bottom: 0.5rem; border-radius: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: opacity 0.3s;';
-  
-  alert.innerHTML = `<span>${message}</span>`;
-  
-  alertContainer.appendChild(alert);
-  
-  setTimeout(() => {
-    alert.style.opacity = '0';
-    setTimeout(() => alert.remove(), 300);
-  }, 3000);
-}
+(function () {
+  const STYLE_ID = 'mm-toast-styles';
+  function ensureToastStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+    const s = document.createElement('style');
+    s.id = STYLE_ID;
+    s.textContent = `
+      #mm-toast-container {
+        position: fixed;
+        top: 1.1rem;
+        right: 1.1rem;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        pointer-events: none;
+        max-width: 340px;
+        width: calc(100vw - 2.2rem);
+      }
+      .mm-toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.7rem;
+        background: #fff;
+        border-radius: 12px;
+        padding: 0.78rem 0.9rem;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.13), 0 1.5px 4px rgba(0,0,0,0.07);
+        pointer-events: all;
+        border: 1px solid #e5e7eb;
+        transform: translateX(120%);
+        opacity: 0;
+        transition: transform 0.3s cubic-bezier(0.34,1.25,0.64,1), opacity 0.25s ease;
+        overflow: hidden;
+        position: relative;
+        cursor: pointer;
+      }
+      .mm-toast.mm-toast-in {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      .mm-toast.mm-toast-out {
+        transform: translateX(110%);
+        opacity: 0;
+      }
+      .mm-toast-icon {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.82rem;
+        margin-top: 1px;
+        flex-shrink: 0;
+      }
+      .mm-toast-body { flex: 1; min-width: 0; }
+      .mm-toast-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin: 0 0 1px;
+        line-height: 1.3;
+        color: #111827;
+      }
+      .mm-toast-msg {
+        font-size: 0.82rem;
+        color: #4b5563;
+        margin: 0;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+      .mm-toast-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #9ca3af;
+        font-size: 0.9rem;
+        padding: 0;
+        line-height: 1;
+        flex-shrink: 0;
+        margin-top: 1px;
+        transition: color 0.15s;
+      }
+      .mm-toast-close:hover { color: #374151; }
+      .mm-toast-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        border-radius: 0 0 12px 12px;
+        width: 100%;
+        transform-origin: left;
+        animation: mm-bar linear forwards;
+      }
+      @keyframes mm-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+      /* success */
+      .mm-toast-success .mm-toast-icon { background: #dcfce7; color: #16a34a; }
+      .mm-toast-success .mm-toast-title { color: #166534; }
+      .mm-toast-success .mm-toast-bar { background: #22c55e; }
+      /* error */
+      .mm-toast-error .mm-toast-icon { background: #fee2e2; color: #dc2626; }
+      .mm-toast-error .mm-toast-title { color: #991b1b; }
+      .mm-toast-error .mm-toast-bar { background: #ef4444; }
+      /* warning */
+      .mm-toast-warning .mm-toast-icon { background: #fef3c7; color: #d97706; }
+      .mm-toast-warning .mm-toast-title { color: #92400e; }
+      .mm-toast-warning .mm-toast-bar { background: #f59e0b; }
+      /* info */
+      .mm-toast-info .mm-toast-icon { background: #dbeafe; color: #2563eb; }
+      .mm-toast-info .mm-toast-title { color: #1e40af; }
+      .mm-toast-info .mm-toast-bar { background: #3b82f6; }
+      @media (prefers-color-scheme: dark) {
+        html[data-theme="dark"] .mm-toast {
+          background: #1e2431;
+          border-color: #2d3748;
+          box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+        }
+        html[data-theme="dark"] .mm-toast-title { color: #f3f4f6; }
+        html[data-theme="dark"] .mm-toast-msg { color: #9ca3af; }
+      }
+      html[data-theme="dark"] .mm-toast {
+        background: #1e2431;
+        border-color: #2d3748;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+      }
+      html[data-theme="dark"] .mm-toast-title { color: #f3f4f6; }
+      html[data-theme="dark"] .mm-toast-msg { color: #9ca3af; }
+      html[data-theme="dark"] .mm-toast-close { color: #6b7280; }
+      html[data-theme="dark"] .mm-toast-close:hover { color: #d1d5db; }
+    `;
+    document.head.appendChild(s);
+  }
 
-function createAlertContainer() {
-  const container = document.createElement('div');
-  container.id = 'alert-container';
-  container.style.cssText = 'position: fixed; top: 100px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; max-width: 400px;';
-  document.body.appendChild(container);
-  return container;
-}
+  function getContainer() {
+    let c = document.getElementById('mm-toast-container');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'mm-toast-container';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+
+  const TYPES = {
+    success: { icon: 'fas fa-check',         label: 'Success' },
+    error:   { icon: 'fas fa-times',          label: 'Error'   },
+    warning: { icon: 'fas fa-exclamation',    label: 'Warning' },
+    info:    { icon: 'fas fa-info',           label: 'Info'    },
+  };
+
+  window.showAlert = function showAlert(message, type = 'info') {
+    ensureToastStyles();
+    const duration = type === 'error' ? 4500 : 3200;
+    const cfg = TYPES[type] || TYPES.info;
+
+    const toast = document.createElement('div');
+    toast.className = `mm-toast mm-toast-${type}`;
+    toast.innerHTML = `
+      <div class="mm-toast-icon"><i class="${cfg.icon}"></i></div>
+      <div class="mm-toast-body">
+        <p class="mm-toast-title">${cfg.label}</p>
+        <p class="mm-toast-msg">${message.replace(/^[✓❌⚠️ℹ️]+\s*/u, '')}</p>
+      </div>
+      <button class="mm-toast-close" aria-label="Dismiss"><i class="fas fa-times"></i></button>
+      <span class="mm-toast-bar" style="animation-duration:${duration}ms"></span>
+    `;
+
+    const close = () => {
+      toast.classList.add('mm-toast-out');
+      setTimeout(() => toast.remove(), 320);
+    };
+    toast.querySelector('.mm-toast-close').addEventListener('click', close);
+    toast.addEventListener('click', close);
+
+    getContainer().appendChild(toast);
+    // Trigger slide-in on next frame
+    requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('mm-toast-in')));
+
+    setTimeout(close, duration);
+  };
+})();
+
+function createAlertContainer() { /* legacy — replaced by mm-toast-container */ return document.createElement('div'); }
 
 const APP_DIALOG_STYLE_ID = 'app-dialog-styles';
 
