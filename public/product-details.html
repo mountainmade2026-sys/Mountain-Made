@@ -1381,7 +1381,6 @@
 
             try {
                 await cart.add(product.id, selectedQuantity);
-                showAlert(`${selectedQuantity} ${product.name}(s) added to cart!`, 'success');
             } catch (error) {
                 console.error('Add to cart error:', error);
                 showAlert('Failed to add to cart', 'error');

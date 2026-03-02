@@ -1868,7 +1868,6 @@
             try {
                 const quantity = getHomeQuantity(productId);
                 await cart.add(productId, quantity);
-                showAlert('Product added to cart!', 'success');
             } catch (error) {
                 console.error('Add to cart error:', error);
                 if (!auth.isAuthenticated()) {

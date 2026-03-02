@@ -674,7 +674,7 @@ const cart = {
         await this.fetch();
         // Only show alert if not in direct buy flow
         if (!sessionStorage.getItem('directBuy')) {
-          showAlert('✓ Product added to cart!', 'success');
+          showAlert('Product added to cart!', 'success', { action: { label: 'Go to Cart', href: '/cart' } });
         }
         return true;
       } else {
@@ -881,6 +881,22 @@ async function uploadProductImage(fileOrInput) {
       html[data-theme="dark"] .mm-toast-msg { color: #9ca3af; }
       html[data-theme="dark"] .mm-toast-close { color: #6b7280; }
       html[data-theme="dark"] .mm-toast-close:hover { color: #d1d5db; }
+      .mm-toast-action {
+        display: inline-block;
+        margin-top: 0.45rem;
+        padding: 0.26rem 0.72rem;
+        background: #16a34a;
+        color: #fff !important;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.15s;
+        pointer-events: all;
+      }
+      .mm-toast-action:hover { background: #15803d; color: #fff !important; }
+      html[data-theme="dark"] .mm-toast-action { background: #16a34a; }
+      html[data-theme="dark"] .mm-toast-action:hover { background: #15803d; }
     `;
     document.head.appendChild(s);
   }
@@ -902,10 +918,13 @@ async function uploadProductImage(fileOrInput) {
     info:    { icon: 'fas fa-info',           label: 'Info'    },
   };
 
-  window.showAlert = function showAlert(message, type = 'info') {
+  window.showAlert = function showAlert(message, type = 'info', options = {}) {
     ensureToastStyles();
     const duration = type === 'error' ? 4500 : 3200;
     const cfg = TYPES[type] || TYPES.info;
+    const actionHtml = options.action
+      ? `<a class="mm-toast-action" href="${options.action.href}" onclick="event.stopPropagation()">${options.action.label}</a>`
+      : '';
 
     const toast = document.createElement('div');
     toast.className = `mm-toast mm-toast-${type}`;
@@ -914,6 +933,7 @@ async function uploadProductImage(fileOrInput) {
       <div class="mm-toast-body">
         <p class="mm-toast-title">${cfg.label}</p>
         <p class="mm-toast-msg">${message.replace(/^[✓❌⚠️ℹ️]+\s*/u, '')}</p>
+        ${actionHtml}
       </div>
       <button class="mm-toast-close" aria-label="Dismiss"><i class="fas fa-times"></i></button>
       <span class="mm-toast-bar" style="animation-duration:${duration}ms"></span>
@@ -924,7 +944,10 @@ async function uploadProductImage(fileOrInput) {
       setTimeout(() => toast.remove(), 320);
     };
     toast.querySelector('.mm-toast-close').addEventListener('click', close);
-    toast.addEventListener('click', close);
+    toast.addEventListener('click', (e) => {
+      if (e.target.closest('.mm-toast-action')) return;
+      close();
+    });
 
     getContainer().appendChild(toast);
     // Trigger slide-in on next frame
