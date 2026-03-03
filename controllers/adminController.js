@@ -1723,6 +1723,27 @@ exports.updateSiteSettings = async (req, res) => {
       updates.push({ key: 'mobile_hero_bg', value: mbUrl });
     }
 
+    // Section banners: section_pc_banners_{id} / section_mobile_banners_{id}
+    const sectionBannerRe = /^section_(pc|mobile)_banners_(\d+)$/;
+    for (const key of Object.keys(req.body)) {
+      if (sectionBannerRe.test(key)) {
+        const rawVal = String(req.body[key] || '').trim();
+        let arr = [];
+        try {
+          arr = rawVal ? JSON.parse(rawVal) : [];
+          if (!Array.isArray(arr)) throw new Error('Not an array');
+        } catch (_) {
+          return res.status(400).json({ error: `${key} must be a JSON array of URLs` });
+        }
+        for (const u of arr) {
+          if (u && !/^(https?:\/\/|\/uploads\/)/i.test(String(u))) {
+            return res.status(400).json({ error: `${key}: invalid URL in array` });
+          }
+        }
+        updates.push({ key, value: JSON.stringify(arr) });
+      }
+    }
+
     if (updates.length === 0) {
       // If nothing was provided, respond gracefully instead of erroring
       return res.json({ success: true, message: 'No changes to update.' });
