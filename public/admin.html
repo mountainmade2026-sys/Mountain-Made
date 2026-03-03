@@ -280,19 +280,18 @@
 
         /* ═══════ SITE SETTINGS QUICK NAV ═══════ */
         #ss-quicknav {
-            display: flex;
+            display: none;   /* shown by JS only when site-settings is active */
             flex-wrap: wrap;
             gap: 0.45rem;
             padding: 0.7rem 1rem;
             background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-xl);
+            border-bottom: 2px solid var(--border);
             box-shadow: var(--shadow-sm);
-            position: sticky;
+            position: fixed;
             top: 0;
-            z-index: 40;
-            margin-bottom: 1.5rem;
+            z-index: 9000;
         }
+        #ss-quicknav-spacer { height: 0; }
         .ss-nav-btn {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
@@ -1739,8 +1738,9 @@
                     <h1><i class="fas fa-cog"></i> Site Settings</h1>
                 </div>
 
-                <!-- Quick-nav is built dynamically by buildSiteSettingsQuickNav() -->
+                <!-- Quick-nav (fixed) is built dynamically by buildSiteSettingsQuickNav() -->
                 <div id="ss-quicknav"></div>
+                <div id="ss-quicknav-spacer"></div>
 
                 <div id="ss-sub-logo" class="data-table-container">
                     <div class="table-header">
@@ -3431,10 +3431,33 @@
                 case 'admin-license': loadAdminLicenseStatus({ silent: true }); break;
                 case 'site-settings': loadSiteSettings(); buildSiteSettingsQuickNav(); break;
             }
+
+            // Hide the fixed quick-nav when leaving site-settings
+            if (id !== 'site-settings') {
+                var nav = document.getElementById('ss-quicknav');
+                var spacer = document.getElementById('ss-quicknav-spacer');
+                if (nav) nav.style.display = 'none';
+                if (spacer) spacer.style.height = '0';
+            }
         };
 
         // ── Site Settings Quick Nav ──────────────────────────────────────────
         window._ssNavObserver = null;
+        window._ssNavResizeHandler = null;
+
+        function _positionSsQuickNav() {
+            var nav = document.getElementById('ss-quicknav');
+            if (!nav || nav.style.display === 'none') return;
+            var main = document.querySelector('.admin-main');
+            if (!main) return;
+            var rect = main.getBoundingClientRect();
+            nav.style.left   = rect.left + 'px';
+            nav.style.width  = rect.width + 'px';
+            nav.style.top    = '0px';
+            // Update spacer height so content isn't hidden behind the fixed nav
+            var spacer = document.getElementById('ss-quicknav-spacer');
+            if (spacer) spacer.style.height = nav.offsetHeight + 'px';
+        }
 
         window.buildSiteSettingsQuickNav = function() {
             var nav = document.getElementById('ss-quicknav');
@@ -3458,10 +3481,19 @@
                 return '<button class="ss-nav-btn" data-target="' + s.id + '" onclick="siteSettingsScrollTo(\'' + s.id + '\')">' + s.label + '</button>';
             }).join('');
 
+            // Show and position the fixed nav
+            nav.style.display = 'flex';
+            _positionSsQuickNav();
+
+            // Keep it positioned on resize (e.g. sidebar toggle, window resize)
+            if (window._ssNavResizeHandler) window.removeEventListener('resize', window._ssNavResizeHandler);
+            window._ssNavResizeHandler = _positionSsQuickNav;
+            window.addEventListener('resize', window._ssNavResizeHandler);
+
             // Disconnect old observer
             if (window._ssNavObserver) { window._ssNavObserver.disconnect(); window._ssNavObserver = null; }
 
-            // IntersectionObserver to highlight active section while scrolling
+            // IntersectionObserver to highlight active button while scrolling
             if ('IntersectionObserver' in window) {
                 var btns = nav.querySelectorAll('.ss-nav-btn');
                 var visible = {};
@@ -3469,7 +3501,6 @@
                     entries.forEach(function(entry) {
                         visible[entry.target.id] = entry.isIntersecting;
                     });
-                    // Find the first visible section
                     var activeId = null;
                     for (var i = 0; i < subs.length; i++) {
                         if (visible[subs[i].id]) { activeId = subs[i].id; break; }
@@ -3484,7 +3515,7 @@
                 });
             }
 
-            // Activate first button initially
+            // Highlight first button initially
             var firstBtn = nav.querySelector('.ss-nav-btn');
             if (firstBtn) firstBtn.classList.add('ss-active');
         };
@@ -3492,12 +3523,10 @@
         window.siteSettingsScrollTo = function(id) {
             var el = document.getElementById(id);
             if (!el) return;
-            // Offset for sticky nav bar height (~52px) + a little breathing room
             var navEl = document.getElementById('ss-quicknav');
             var offset = navEl ? navEl.offsetHeight + 12 : 64;
             var top = el.getBoundingClientRect().top + window.pageYOffset - offset;
             window.scrollTo({ top: top, behavior: 'smooth' });
-            // Immediately highlight clicked button
             var nav = document.getElementById('ss-quicknav');
             if (nav) {
                 nav.querySelectorAll('.ss-nav-btn').forEach(function(btn) {
