@@ -1766,11 +1766,17 @@
                     if (!val || val === 'null') return null;
                     try {
                         const p = JSON.parse(val);
-                        if (p && !Array.isArray(p) && p.url) return { url: p.url, shape: p.shape || 'full', size: parseInt(p.size) || 0, zoom: parseInt(p.zoom) || 100 };
+                        if (p && !Array.isArray(p) && p.url) {
+                            const isGif = p.isGif === true || /\.gif($|[?#])/i.test(String(p.url || ''));
+                            return { url: p.url, shape: p.shape || 'full', size: parseInt(p.size) || 0, zoom: parseInt(p.zoom) || 100, isGif };
+                        }
                         if (Array.isArray(p) && p[0]) {
                             const first = p[0];
-                            if (typeof first === 'string') return { url: first, shape: 'full', size: 0, zoom: 100 };
-                            if (first && first.url) return { url: first.url, shape: first.shape || 'full', size: parseInt(first.size) || 0, zoom: parseInt(first.zoom) || 100 };
+                            if (typeof first === 'string') return { url: first, shape: 'full', size: 0, zoom: 100, isGif: /\.gif($|[?#])/i.test(String(first || '')) };
+                            if (first && first.url) {
+                                const isGif = first.isGif === true || /\.gif($|[?#])/i.test(String(first.url || ''));
+                                return { url: first.url, shape: first.shape || 'full', size: parseInt(first.size) || 0, zoom: parseInt(first.zoom) || 100, isGif };
+                            }
                         }
                     } catch(_) {}
                     return null;
@@ -1789,8 +1795,11 @@
                     }
                 }
 
-                function _bannerInnerImgStyle(zoom = 100) {
+                function _bannerInnerImgStyle(zoom = 100, isGif = false) {
                     const z = Math.max(50, Math.min(250, parseInt(zoom) || 100));
+                    if (!isGif) {
+                        return `width:100%;height:100%;object-fit:cover;display:block;`;
+                    }
                     return `width:100%;height:100%;object-fit:cover;display:block;transform:scale(${z / 100});transform-origin:center center;`;
                 }
 
@@ -1808,10 +1817,10 @@
                     if (hasBanners) {
                         bannersHtml = `<div class="section-banners-row">`;
                         if (pcData) {
-                            bannersHtml += `<div class="section-banner-pc"><div style="${_bannerMaskStyle(pcData.shape, pcData.size)}"><img style="${_bannerInnerImgStyle(pcData.zoom)}" src="${encodeURI(pcData.url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.closest('.section-banner-pc').style.display='none'"></div></div>`;
+                            bannersHtml += `<div class="section-banner-pc"><div style="${_bannerMaskStyle(pcData.shape, pcData.size)}"><img style="${_bannerInnerImgStyle(pcData.zoom, !!pcData.isGif)}" src="${encodeURI(pcData.url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.closest('.section-banner-pc').style.display='none'"></div></div>`;
                         }
                         if (mobData) {
-                            bannersHtml += `<div class="section-banner-mobile"><div style="${_bannerMaskStyle(mobData.shape, mobData.size)}"><img style="${_bannerInnerImgStyle(mobData.zoom)}" src="${encodeURI(mobData.url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.closest('.section-banner-mobile').style.display='none'"></div></div>`;
+                            bannersHtml += `<div class="section-banner-mobile"><div style="${_bannerMaskStyle(mobData.shape, mobData.size)}"><img style="${_bannerInnerImgStyle(mobData.zoom, !!mobData.isGif)}" src="${encodeURI(mobData.url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.closest('.section-banner-mobile').style.display='none'"></div></div>`;
                         }
                         bannersHtml += `</div>`;
                     }

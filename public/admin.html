@@ -8969,12 +8969,16 @@
             try {
                 const parsed = JSON.parse(val);
                 if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.url) {
-                    return { url: parsed.url, shape: parsed.shape || 'full', size: parseInt(parsed.size) || 0, zoom: parseInt(parsed.zoom) || 100 };
+                    const isGif = parsed.isGif === true || /\.gif($|[?#])/i.test(String(parsed.url || ''));
+                    return { url: parsed.url, shape: parsed.shape || 'full', size: parseInt(parsed.size) || 0, zoom: parseInt(parsed.zoom) || 100, isGif };
                 }
                 if (Array.isArray(parsed) && parsed.length) {
                     const first = parsed[0];
-                    if (typeof first === 'string') return { url: first, shape: 'full', size: 0, zoom: 100 };
-                    if (first && first.url) return { url: first.url, shape: first.shape || 'full', size: parseInt(first.size) || 0, zoom: parseInt(first.zoom) || 100 };
+                    if (typeof first === 'string') return { url: first, shape: 'full', size: 0, zoom: 100, isGif: /\.gif($|[?#])/i.test(String(first || '')) };
+                    if (first && first.url) {
+                        const isGif = first.isGif === true || /\.gif($|[?#])/i.test(String(first.url || ''));
+                        return { url: first.url, shape: first.shape || 'full', size: parseInt(first.size) || 0, zoom: parseInt(first.zoom) || 100, isGif };
+                    }
                 }
             } catch(_) {}
             return null;
@@ -9011,8 +9015,11 @@
             }
         }
 
-        function _bannerInnerImageStyle(zoom = 100) {
+        function _bannerInnerImageStyle(zoom = 100, applyZoom = true) {
             const z = Math.max(50, Math.min(250, parseInt(zoom) || 100));
+            if (!applyZoom) {
+                return `width:100%;height:100%;object-fit:cover;display:block;`;
+            }
             return `width:100%;height:100%;object-fit:cover;display:block;transform:scale(${z / 100});transform-origin:center center;`;
         }
 
@@ -9122,6 +9129,7 @@
             const shape      = window[`_bsShape_${slotId}`] || 'full';
             const size       = parseInt(window[`_bsSize_${slotId}`]) || _defaultBannerSize(shape);
             const zoom       = Math.max(50, Math.min(250, parseInt(window[`_bsZoom_${slotId}`]) || 100));
+            const isGif      = !!window[`_bsIsGif_${slotId}`];
             // Compact size for the preview pane so mock title+cards are always visible
             const isWideBanner = ['full', 'rectangle'].includes(shape);
             const compactSize = isWideBanner ? Math.max(45, Math.min(180, Math.round(size * 0.55))) : Math.max(45, Math.min(140, Math.round(size * 0.75)));
@@ -9144,7 +9152,7 @@
             if (src) {
                 maskEl.style.cssText = _bannerMaskStyle(shape, compactSize);
                 maskEl.style.display = 'block';
-                imgEl.style.cssText = _bannerInnerImageStyle(zoom);
+                imgEl.style.cssText = _bannerInnerImageStyle(zoom, isGif);
                 imgEl.src = src;
                 imgEl.style.display = 'block';
                 if (phEl) phEl.style.display = 'none';
@@ -9398,6 +9406,7 @@
             if (cropRow) cropRow.style.display = isGif ? 'none' : '';
             window[`_bsFile_${slotId}`] = file;
             window[`_bsCropped_${slotId}`] = null;
+            window[`_bsIsGif_${slotId}`] = isGif;
             if (isGif) {
                 window[`_bsCropped_${slotId}`] = file;
                 _applySlotPreview(slotId, URL.createObjectURL(file));
@@ -9452,12 +9461,15 @@
             const [rW, rH] = _getCropRatio(type, shape);
             const fileInput = document.getElementById(`${slotId}_file`);
             let fileToUpload = window[`_bsCropped_${slotId}`];
+            let isGifUpload = false;
             if (!fileToUpload && fileInput?.files?.[0]) {
                 window[`_bsFile_${slotId}`] = fileInput.files[0];
                 const cx = parseFloat(document.getElementById(`${slotId}_cx`)?.value ?? 50);
                 const cy = parseFloat(document.getElementById(`${slotId}_cy`)?.value ?? 50);
-                const isGif = fileInput.files[0].name.toLowerCase().endsWith('.gif') || fileInput.files[0].type === 'image/gif';
-                fileToUpload = isGif ? fileInput.files[0] : await cropImageToBannerFile(fileInput.files[0], rW, rH, cx, cy, zoom);
+                isGifUpload = fileInput.files[0].name.toLowerCase().endsWith('.gif') || fileInput.files[0].type === 'image/gif';
+                fileToUpload = isGifUpload ? fileInput.files[0] : await cropImageToBannerFile(fileInput.files[0], rW, rH, cx, cy, zoom);
+            } else if (fileToUpload) {
+                isGifUpload = fileToUpload.name?.toLowerCase?.().endsWith('.gif') || fileToUpload.type === 'image/gif';
             }
             if (!fileToUpload) { showAlert('Please select an image or GIF first', 'error'); return; }
             try {
@@ -9466,7 +9478,7 @@
                 if (!url) throw new Error('Upload failed');
                 const key = `section_${type}_banners_${sectionId}`;
                 const payload = {};
-                payload[key] = JSON.stringify({ url, shape, size, zoom });
+                payload[key] = JSON.stringify({ url, shape, size, zoom, isGif: !!isGifUpload });
                 await api.post('/admin/settings', payload);
                 if (!window._sectionBannerSettings) window._sectionBannerSettings = {};
                 window._sectionBannerSettings[key] = payload[key];
@@ -9506,6 +9518,7 @@
             window[`_bsSize_${slotId}`] = clampedSize;
             const zoom = Math.max(50, Math.min(250, parseInt(data.zoom) || 100));
             window[`_bsZoom_${slotId}`] = zoom;
+            window[`_bsIsGif_${slotId}`] = !!data.isGif;
             const sizeRange = document.getElementById(`${slotId}_sizer`);
             const sizeLabel = document.getElementById(`${slotId}_sizelabel`);
             const zoomRange = document.getElementById(`${slotId}_zoom`);
@@ -9528,7 +9541,7 @@
             }
             // Show crop row
             const cropRow = document.getElementById(`${slotId}_croprow`);
-            if (cropRow) cropRow.style.display = '';
+            if (cropRow) cropRow.style.display = data.isGif ? 'none' : '';
             // Scroll to slot
             document.getElementById(slotId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         };

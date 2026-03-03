@@ -1800,7 +1800,8 @@ exports.updateSiteSettings = async (req, res) => {
           if (zoom !== undefined && (isNaN(zoom) || zoom < 50 || zoom > 250)) {
             return res.status(400).json({ error: `${key}: zoom must be 50-250 %` });
           }
-          updates.push({ key, value: JSON.stringify({ url, shape, ...(size ? { size } : {}), ...(zoom ? { zoom } : {}) }) });
+          const isGif = parsed.isGif === true;
+          updates.push({ key, value: JSON.stringify({ url, shape, ...(size ? { size } : {}), ...(zoom ? { zoom } : {}), ...(isGif ? { isGif: true } : {}) }) });
           continue;
         }
         // Legacy format: array of URL strings — convert to single {url, shape} object
