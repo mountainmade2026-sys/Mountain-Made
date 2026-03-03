@@ -2180,7 +2180,10 @@
                         <div style="margin-bottom:1.75rem;">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;">
                                 <strong style="font-size:1rem;"><i class="fas fa-images" style="color:var(--primary);margin-right:0.4rem;"></i>Saved Banners</strong>
-                                <button class="btn btn-secondary btn-sm" onclick="refreshAllSavedBanners()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                <div style="display:flex;gap:0.5rem;align-items:center;">
+                                    <button class="btn btn-warning btn-sm" onclick="clearAllLegacySectionHeadingImages()"><i class="fas fa-eraser"></i> Clear Old Section Images</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="refreshAllSavedBanners()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                </div>
                             </div>
                             <div id="all-section-banners-display" style="min-height:2.5rem;">
                                 <p style="color:var(--text-muted);font-size:0.85rem;">Loading saved banners…</p>
@@ -9215,6 +9218,37 @@
                 refreshAllSavedBanners();
             } catch(e) {
                 showAlert('Failed to clear banners', 'error');
+            }
+        };
+
+        window.clearAllLegacySectionHeadingImages = async function() {
+            if (!(await showConfirmDialog('This will remove old homepage section heading images from ALL sections. Continue?', {
+                title: 'Clear Old Section Images',
+                confirmText: 'Clear All',
+                danger: true
+            }))) return;
+            try {
+                const resp = await api.get('/admin/homepage-sections');
+                const sections = Array.isArray(resp?.sections) ? resp.sections : [];
+                const legacySections = sections.filter(s => String(s.heading_image_url || '').trim());
+                if (!legacySections.length) {
+                    showAlert('No old section images found to clear.', 'info');
+                    return;
+                }
+                showAlert('Clearing old section images…', 'info');
+                for (const section of legacySections) {
+                    await api.put(`/admin/homepage-sections/${section.id}`, {
+                        heading_image_url: ''
+                    });
+                }
+                if (Array.isArray(window._homepageSectionsCache)) {
+                    window._homepageSectionsCache = window._homepageSectionsCache.map(s => ({ ...s, heading_image_url: '' }));
+                }
+                try { await loadHomepageSections(); } catch (_) {}
+                try { await loadHomepageSectionsForForms(); } catch (_) {}
+                showAlert(`Cleared old section images for ${legacySections.length} section(s).`, 'success');
+            } catch (error) {
+                showAlert(error?.message || 'Failed to clear old section images', 'error');
             }
         };
 
