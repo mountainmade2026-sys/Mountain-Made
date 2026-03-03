@@ -198,12 +198,22 @@
             display: block;
             margin-bottom: 4px;
         }
-        /* PC banners: visible on desktop, hidden on mobile */
-        .section-banner-pc { display: block; }
+        /* PC banners: cap height so they don't dominate the page */
+        .section-banner-pc {
+            display: block;
+            max-height: 160px;
+            width: 100%;
+            object-fit: cover;
+        }
         .section-banner-mobile { display: none; }
         @media (max-width: 768px) {
             .section-banner-pc { display: none; }
-            .section-banner-mobile { display: block; }
+            .section-banner-mobile {
+                display: block;
+                max-height: 220px;
+                width: 100%;
+                object-fit: cover;
+            }
         }
         /* If a section has no mobile banners, fall back to showing PC on mobile */
         .section-banners-row.no-mobile .section-banner-pc { display: block; }
