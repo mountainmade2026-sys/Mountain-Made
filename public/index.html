@@ -198,26 +198,51 @@
             display: block;
             margin-bottom: 4px;
         }
-        /* PC banners: cap height so they don't dominate the page */
-        .section-banner-pc {
-            display: block;
-            max-height: 160px;
-            width: 100%;
-            object-fit: cover;
+        /* Section banners — shape-aware rendering */
+        .section-banners-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0.5rem 0;
         }
+        /* Shape classes */
+        .banner-shape-full {
+            display: block; width: 100%; max-height: 160px;
+            object-fit: cover; border-radius: 4px;
+        }
+        .banner-shape-rectangle {
+            display: block; width: 100%; max-height: 160px;
+            aspect-ratio: 16/9; object-fit: cover; border-radius: 10px;
+        }
+        .banner-shape-circle {
+            display: block; width: 140px; height: 140px;
+            border-radius: 50%; object-fit: cover;
+        }
+        .banner-shape-square {
+            display: block; width: 140px; height: 140px;
+            border-radius: 8px; object-fit: cover;
+        }
+        .banner-shape-triangle {
+            display: block; width: 180px; height: 160px;
+            object-fit: cover;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+        .banner-shape-star {
+            display: block; width: 160px; height: 160px;
+            object-fit: cover;
+            clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+        }
+        /* PC vs Mobile visibility */
+        .section-banner-pc { display: flex; }
         .section-banner-mobile { display: none; }
         @media (max-width: 768px) {
             .section-banner-pc { display: none; }
-            .section-banner-mobile {
-                display: block;
-                max-height: 220px;
-                width: 100%;
-                object-fit: cover;
-            }
+            .section-banner-mobile { display: flex; }
+            .banner-shape-full, .banner-shape-rectangle { max-height: 200px; }
         }
-        /* If a section has no mobile banners, fall back to showing PC on mobile */
-        .section-banners-row.no-mobile .section-banner-pc { display: block; }
-        .section-banners-row.no-pc .section-banner-mobile { display: block; }
+        /* Fallbacks */
+        .section-banners-row.no-mobile .section-banner-pc { display: flex; }
+        .section-banners-row.no-pc .section-banner-mobile { display: flex; }
 
         /* Homepage product cards - compact sizing + better image fit */
         #homepage-sections-container .product-card .card-image {
@@ -1727,11 +1752,19 @@
                 
                 let html = '';
 
-                // Helper to parse banner URL JSON arrays from settings
-                function parseBannerArr(val) {
-                    if (!val) return [];
-                    try { const a = JSON.parse(val); return Array.isArray(a) ? a.filter(Boolean) : []; }
-                    catch(_) { return []; }
+                // Parse banner setting value → {url, shape} or null (handles legacy arrays too)
+                function parseBannerData(val) {
+                    if (!val || val === 'null') return null;
+                    try {
+                        const p = JSON.parse(val);
+                        if (p && !Array.isArray(p) && p.url) return { url: p.url, shape: p.shape || 'full' };
+                        if (Array.isArray(p) && p[0]) {
+                            const first = p[0];
+                            if (typeof first === 'string') return { url: first, shape: 'full' };
+                            if (first && first.url) return { url: first.url, shape: first.shape || 'full' };
+                        }
+                    } catch(_) {}
+                    return null;
                 }
 
                 sections.forEach((section) => {
@@ -1740,21 +1773,21 @@
                     const safeSectionHeadingImageUrl = sectionHeadingImageUrl ? encodeURI(sectionHeadingImageUrl) : '';
                     const showHeadingImage = !!sectionHeadingImageUrl;
 
-                    // Banners from site_settings
-                    const pcBanners = parseBannerArr(settings[`section_pc_banners_${section.id}`]);
-                    const mobBanners = parseBannerArr(settings[`section_mobile_banners_${section.id}`]);
-                    const hasBanners = pcBanners.length > 0 || mobBanners.length > 0;
-                    const noMob = mobBanners.length === 0;
-                    const noPc = pcBanners.length === 0;
+                    // Banners from site_settings — one banner per type per section
+                    const pcData  = parseBannerData(settings[`section_pc_banners_${section.id}`]);
+                    const mobData = parseBannerData(settings[`section_mobile_banners_${section.id}`]);
+                    const hasBanners = !!(pcData || mobData);
+                    const noMob = !mobData;
+                    const noPc  = !pcData;
                     let bannersHtml = '';
                     if (hasBanners) {
                         bannersHtml = `<div class="section-banners-row${noMob ? ' no-mobile' : ''}${noPc ? ' no-pc' : ''}">`;
-                        pcBanners.forEach(url => {
-                            bannersHtml += `<img class="section-banner-pc" src="${encodeURI(url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.style.display='none'">`;
-                        });
-                        mobBanners.forEach(url => {
-                            bannersHtml += `<img class="section-banner-mobile" src="${encodeURI(url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.style.display='none'">`;
-                        });
+                        if (pcData) {
+                            bannersHtml += `<div class="section-banner-pc"><img class="banner-shape-${pcData.shape||'full'}" src="${encodeURI(pcData.url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.parentElement.style.display='none'"></div>`;
+                        }
+                        if (mobData) {
+                            bannersHtml += `<div class="section-banner-mobile"><img class="banner-shape-${mobData.shape||'full'}" src="${encodeURI(mobData.url)}" alt="${section.name} banner" loading="lazy" decoding="async" onerror="this.parentElement.style.display='none'"></div>`;
+                        }
                         bannersHtml += `</div>`;
                     }
 

@@ -1724,23 +1724,50 @@ exports.updateSiteSettings = async (req, res) => {
     }
 
     // Section banners: section_pc_banners_{id} / section_mobile_banners_{id}
+    // Accepts new single-object format {url, shape} OR legacy array-of-URLs format OR 'null'/'null'
     const sectionBannerRe = /^section_(pc|mobile)_banners_(\d+)$/;
+    const validBannerShapes = ['full', 'circle', 'rectangle', 'square', 'triangle', 'star'];
     for (const key of Object.keys(req.body)) {
       if (sectionBannerRe.test(key)) {
         const rawVal = String(req.body[key] || '').trim();
-        let arr = [];
-        try {
-          arr = rawVal ? JSON.parse(rawVal) : [];
-          if (!Array.isArray(arr)) throw new Error('Not an array');
-        } catch (_) {
-          return res.status(400).json({ error: `${key} must be a JSON array of URLs` });
+        // Allow explicit clear
+        if (!rawVal || rawVal === 'null' || rawVal === '[]' || rawVal === '{}') {
+          updates.push({ key, value: null });
+          continue;
         }
-        for (const u of arr) {
-          if (u && !/^(https?:\/\/|\/uploads\/)/i.test(String(u))) {
+        let parsed;
+        try {
+          parsed = JSON.parse(rawVal);
+        } catch (_) {
+          return res.status(400).json({ error: `${key} must be valid JSON` });
+        }
+        if (parsed === null) {
+          updates.push({ key, value: null });
+          continue;
+        }
+        // New format: single {url, shape} object
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const url = String(parsed.url || '').trim();
+          if (url && !/^(https?:\/\/|\/uploads\/)/i.test(url)) {
+            return res.status(400).json({ error: `${key}: invalid URL` });
+          }
+          const shape = parsed.shape || 'full';
+          if (!validBannerShapes.includes(shape)) {
+            return res.status(400).json({ error: `${key}: invalid shape '${shape}'` });
+          }
+          updates.push({ key, value: JSON.stringify({ url, shape }) });
+          continue;
+        }
+        // Legacy format: array of URL strings — convert to single {url, shape} object
+        if (Array.isArray(parsed)) {
+          const url = String(parsed[0] || '').trim();
+          if (url && !/^(https?:\/\/|\/uploads\/)/i.test(url)) {
             return res.status(400).json({ error: `${key}: invalid URL in array` });
           }
+          updates.push({ key, value: url ? JSON.stringify({ url, shape: 'full' }) : null });
+          continue;
         }
-        updates.push({ key, value: JSON.stringify(arr) });
+        return res.status(400).json({ error: `${key}: unrecognised banner format` });
       }
     }
 
