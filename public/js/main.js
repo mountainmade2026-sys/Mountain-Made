@@ -2062,19 +2062,36 @@ async function initApp() {
   }
 
   // Capacitor hardware back button — navigate back instead of closing the app
-  if (IS_NATIVE_CAPACITOR && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-    window.Capacitor.Plugins.App.addListener('backButton', () => {
-      const path = window.location.pathname || '/';
-      const isHome = path === '/' || path === '/index.html';
-      if (!isHome && window.history.length > 1) {
-        window.history.back();
-      } else if (isHome) {
-        // On home page, allow the app to exit naturally via Capacitor
-        window.Capacitor.Plugins.App.exitApp && window.Capacitor.Plugins.App.exitApp();
-      } else {
-        window.location.href = '/';
+  try {
+    if (IS_NATIVE_CAPACITOR) {
+      document.addEventListener('backbutton', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const path = window.location.pathname || '/';
+        const isHome = path === '/' || path === '/index.html';
+        if (!isHome) {
+          window.history.back();
+        } else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          window.Capacitor.Plugins.App.exitApp();
+        }
+      }, false);
+
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.addListener('backButton', function(data) {
+          const path = window.location.pathname || '/';
+          const isHome = path === '/' || path === '/index.html';
+          if (data && data.canGoBack && !isHome) {
+            window.history.back();
+          } else if (!isHome) {
+            window.history.back();
+          } else {
+            window.Capacitor.Plugins.App.exitApp();
+          }
+        });
       }
-    });
+    }
+  } catch(e) {
+    console.warn('Back button handler error:', e);
   }
 }
 
