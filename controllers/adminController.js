@@ -1284,12 +1284,14 @@ exports.updateHomepageSection = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, heading_image_url, sort_order, is_active } = req.body;
+    const hasHeadingImageField = Object.prototype.hasOwnProperty.call(req.body || {}, 'heading_image_url');
+    const normalizedHeadingImage = hasHeadingImageField ? String(heading_image_url || '').trim() : null;
     
     const query = `
       UPDATE homepage_sections 
       SET name = COALESCE($1, name),
           description = COALESCE($2, description),
-          heading_image_url = COALESCE($3, heading_image_url),
+          heading_image_url = CASE WHEN $7 THEN NULLIF($3, '') ELSE heading_image_url END,
           sort_order = COALESCE($4, sort_order),
           is_active = COALESCE($5, is_active),
           updated_at = CURRENT_TIMESTAMP
@@ -1297,7 +1299,7 @@ exports.updateHomepageSection = async (req, res) => {
       RETURNING *
     `;
     
-    const result = await db.query(query, [name, description, heading_image_url, sort_order, is_active, id]);
+    const result = await db.query(query, [name, description, normalizedHeadingImage, sort_order, is_active, id, hasHeadingImageField]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Homepage section not found.' });
@@ -1310,6 +1312,27 @@ exports.updateHomepageSection = async (req, res) => {
   } catch (error) {
     console.error('Update homepage section error:', error);
     res.status(500).json({ error: 'Failed to update homepage section.' });
+  }
+};
+
+exports.clearAllHomepageSectionHeadingImages = async (req, res) => {
+  try {
+    const result = await db.query(`
+      UPDATE homepage_sections
+      SET heading_image_url = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE heading_image_url IS NOT NULL
+        AND BTRIM(heading_image_url) <> ''
+      RETURNING id
+    `);
+    res.json({
+      success: true,
+      clearedCount: result.rowCount || 0,
+      message: `Cleared old section images for ${result.rowCount || 0} section(s).`
+    });
+  } catch (error) {
+    console.error('Clear all homepage section heading images error:', error);
+    res.status(500).json({ error: 'Failed to clear old section images.' });
   }
 };
 

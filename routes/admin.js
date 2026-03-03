@@ -63,6 +63,7 @@ router.put('/orders/:id/status', adminController.updateOrderStatus);
 // Homepage Sections Management
 router.get('/homepage-sections', adminController.getAllHomepageSections);
 router.post('/homepage-sections', adminController.createHomepageSection);
+router.post('/homepage-sections/clear-heading-images', adminController.clearAllHomepageSectionHeadingImages);
 router.put('/homepage-sections/:id', adminController.updateHomepageSection);
 router.delete('/homepage-sections/:id', adminController.deleteHomepageSection);
 
