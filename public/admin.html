@@ -3293,18 +3293,8 @@
 
             const updatedPriceText = Number(evaluatedPrice).toFixed(2);
             priceInput.value = updatedPriceText;
-            priceInput.setAttribute('data-base-price', updatedPriceText);
-            priceInput.setAttribute('data-saved-price', updatedPriceText);
-
-            // This field acts as a command input for price adjustment.
-            discountInput.value = '';
-            discountInput.setAttribute('data-saved-discount', '');
-            try {
-                priceInput.dispatchEvent(new Event('input', { bubbles: true }));
-                priceInput.dispatchEvent(new Event('change', { bubbles: true }));
-            } catch (_) {
-                // ignore
-            }
+            // Mark as command-applied so save logic can ignore this field as discount value.
+            discountInput.setAttribute('data-command-applied', '1');
         };
     // Admin dashboard with improved mobile handling
     (function(){
@@ -8140,6 +8130,7 @@
                     ? ''
                     : String(product.discount_price);
                 editDiscountInput.setAttribute('data-saved-discount', savedDiscount);
+                editDiscountInput.setAttribute('data-command-applied', '0');
             }
 
             const editPriceInput = document.getElementById('edit-product-price');
@@ -8465,7 +8456,8 @@
                 }
                 const description = document.getElementById('edit-product-description').value;
                 const wholesale_price = document.getElementById('edit-product-wholesale-price').value || null;
-                const discount_price = document.getElementById('edit-product-discount-price').value || null;
+                const discountInputEl = document.getElementById('edit-product-discount-price');
+                const discount_price = discountInputEl?.value || null;
                 const min_wholesale_qty = document.getElementById('edit-product-min-wholesale').value || 10;
                 const imageFiles = editProductSelectedImages;
 
@@ -8484,7 +8476,9 @@
                 const basePriceRaw = String(priceInputEl?.getAttribute('data-base-price') || priceInputEl?.getAttribute('data-saved-price') || price || '').trim();
                 const parsedBasePrice = parseFloat(basePriceRaw);
                 const parsedPrice = parseFloat(price);
-                const parsedDiscountPrice = discount_price ? parseFloat(discount_price) : null;
+                const discountRaw = String(discount_price || '').trim();
+                const discountLooksLikeCommand = /^[+\-*/]/.test(discountRaw) || /[+\-*/()]/.test(discountRaw);
+                const parsedDiscountPrice = (discount_price && !discountLooksLikeCommand) ? parseFloat(discount_price) : null;
 
                 if (!Number.isFinite(parsedPrice)) {
                     showAlert('Please enter a valid price.', 'error');
