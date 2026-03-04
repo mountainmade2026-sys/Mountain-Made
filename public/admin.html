@@ -2986,7 +2986,7 @@
                             <div class="form-row">
                                 <div>
                                     <label class="form-label">Discount Price (₹) <small style="color: var(--text-muted); font-weight: normal;">Optional</small></label>
-                                    <input type="text" id="edit-product-discount-price" class="form-input" placeholder="0.00 or -50 or +10" onblur="updateDiscountFromMainPrice('discount')">
+                                    <input type="text" id="edit-product-discount-price" class="form-input" placeholder="0.00 or -50 or +10" oninput="updateDiscountFromMainPrice('discount')" onblur="updateDiscountFromMainPrice('discount')">
                                 </div>
                                 <div>
                                     <label class="form-label">Wholesale Price (₹)</label>
@@ -3274,41 +3274,50 @@
             // Avoid acting on incomplete operator-only edits during typing
             if (/^[+\-*/.]$/.test(adjustmentRaw)) return;
 
-            let computedDiscount = null;
-            const plainNumber = /^[+-]?\d*\.?\d+$/;
+            const looksLikeMainPriceAdjustment =
+                adjustmentRaw.startsWith('+') ||
+                adjustmentRaw.startsWith('-') ||
+                adjustmentRaw.startsWith('*') ||
+                adjustmentRaw.startsWith('/') ||
+                /[+\-*/()]/.test(adjustmentRaw);
 
-            if (plainNumber.test(adjustmentRaw)) {
-                const numeric = parseFloat(adjustmentRaw);
-                if (!Number.isFinite(numeric)) return;
-
-                if (adjustmentRaw.startsWith('-')) {
-                    computedDiscount = basePrice - Math.abs(numeric);
-                } else if (adjustmentRaw.startsWith('+')) {
-                    computedDiscount = basePrice + Math.abs(numeric);
-                } else {
-                    computedDiscount = numeric;
-                }
-            } else {
-                const safeExpr = adjustmentRaw.replace(/\s+/g, '');
-                if (!/^[0-9+\-*/().]+$/.test(safeExpr)) return;
-
-                const normalizedExpr = /^[+\-*/]/.test(safeExpr)
-                    ? `${basePrice}${safeExpr}`
-                    : safeExpr;
-
-                const evaluated = Function(`"use strict"; return (${normalizedExpr});`)();
-                if (!Number.isFinite(evaluated)) return;
-                computedDiscount = evaluated;
+            // Positive plain numbers remain as direct discount values.
+            if (!looksLikeMainPriceAdjustment) {
+                const asNumber = parseFloat(adjustmentRaw);
+                if (!Number.isFinite(asNumber) || asNumber < 0) return;
+                const computedText = Number(asNumber).toFixed(2);
+                discountInput.value = computedText;
+                discountInput.setAttribute('data-saved-discount', computedText);
+                return;
             }
 
-            computedDiscount = Math.max(0, computedDiscount);
+            const safeExpr = adjustmentRaw.replace(/\s+/g, '');
+            if (!/^[0-9+\-*/().]+$/.test(safeExpr)) return;
 
-            const computedText = Number(computedDiscount).toFixed(2);
-            discountInput.value = computedText;
-            discountInput.setAttribute('data-saved-discount', computedText);
+            const normalizedExpr = /^[+\-*/]/.test(safeExpr)
+                ? `${basePrice}${safeExpr}`
+                : safeExpr;
+
+            let evaluatedPrice = null;
             try {
-                discountInput.dispatchEvent(new Event('input', { bubbles: true }));
-                discountInput.dispatchEvent(new Event('change', { bubbles: true }));
+                evaluatedPrice = Function(`"use strict"; return (${normalizedExpr});`)();
+            } catch (_) {
+                return;
+            }
+            if (!Number.isFinite(evaluatedPrice)) return;
+            evaluatedPrice = Math.max(0, evaluatedPrice);
+
+            const updatedPriceText = Number(evaluatedPrice).toFixed(2);
+            priceInput.value = updatedPriceText;
+            priceInput.setAttribute('data-base-price', updatedPriceText);
+            priceInput.setAttribute('data-saved-price', updatedPriceText);
+
+            // This field acted as a price-adjust command, so clear stored discount.
+            discountInput.value = '';
+            discountInput.setAttribute('data-saved-discount', '');
+            try {
+                priceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                priceInput.dispatchEvent(new Event('change', { bubbles: true }));
             } catch (_) {
                 // ignore
             }
@@ -8458,6 +8467,10 @@
             try {
                 const productId = document.getElementById('edit-product-id').value;
                 const name = document.getElementById('edit-product-name').value;
+
+                // Ensure any pending signed/expression entry in Discount field is first applied to main price
+                try { window.updateDiscountFromMainPrice?.('discount'); } catch (_) {}
+
                 const price = document.getElementById('edit-product-price').value;
                 const stock = document.getElementById('edit-product-stock').value;
                 const category_id = document.getElementById('edit-product-category').value;
