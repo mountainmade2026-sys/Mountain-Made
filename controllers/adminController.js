@@ -586,8 +586,12 @@ exports.updateProduct = async (req, res) => {
       category_id: incoming.category_id ?? existing.category_id,
       homepage_section_id: incoming.homepage_section_id !== undefined ? incoming.homepage_section_id : existing.homepage_section_id,
       price: incoming.price !== undefined ? parseFloat(incoming.price) : existing.price,
-      wholesale_price: incoming.wholesale_price !== undefined ? parseFloat(incoming.wholesale_price) : existing.wholesale_price,
-      discount_price: incoming.discount_price !== undefined ? parseFloat(incoming.discount_price) : existing.discount_price,
+      wholesale_price: incoming.wholesale_price !== undefined
+        ? (incoming.wholesale_price === null ? null : parseFloat(incoming.wholesale_price))
+        : existing.wholesale_price,
+      discount_price: incoming.discount_price !== undefined
+        ? (incoming.discount_price === null ? null : parseFloat(incoming.discount_price))
+        : existing.discount_price,
       discount_adjust: incoming.discount_adjust !== undefined
         ? (incoming.discount_adjust === null ? null : String(incoming.discount_adjust).trim() || null)
         : existing.discount_adjust,

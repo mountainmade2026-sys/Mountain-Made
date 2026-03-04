@@ -253,7 +253,7 @@ class Product {
           homepage_section_id = $4,
           price = COALESCE($5, price),
           wholesale_price = COALESCE($6, wholesale_price),
-          discount_price = COALESCE($7, discount_price),
+          discount_price = $7,
           discount_adjust = COALESCE($8, discount_adjust),
           stock_quantity = COALESCE($9, stock_quantity),
           min_wholesale_qty = COALESCE($10, min_wholesale_qty),
