@@ -3265,7 +3265,8 @@
             const basePriceRaw = String(priceInput.getAttribute('data-base-price') || priceInput.getAttribute('data-saved-price') || '').trim();
             const basePriceAttr = parseFloat(basePriceRaw);
             const currentPrice = parseFloat(String(priceInput.value || '').trim());
-            const basePrice = Number.isFinite(currentPrice) ? currentPrice : basePriceAttr;
+            // ALWAYS use the stable attribute first so cascading keystrokes don't drift.
+            const basePrice = Number.isFinite(basePriceAttr) ? basePriceAttr : currentPrice;
             if (!Number.isFinite(basePrice)) return;
 
             const adjustmentRaw = String(discountInput.value || '').trim();
@@ -8485,7 +8486,8 @@
                     return;
                 }
 
-                if (discount_price && !Number.isFinite(parsedDiscountPrice)) {
+                // If field held a command expression (e.g. "-10"), it was already applied to price — skip validation.
+                if (discount_price && !discountLooksLikeCommand && !Number.isFinite(parsedDiscountPrice)) {
                     showAlert('Please enter a valid discount price.', 'error');
                     return;
                 }
