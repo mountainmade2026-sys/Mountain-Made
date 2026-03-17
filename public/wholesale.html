@@ -777,25 +777,120 @@
             }
 
             .wholesale-section {
-                padding: 1.5rem;
+                padding: 1rem;
+            }
+
+            .wholesale-section[style] {
+                padding: 1rem !important;
             }
 
             .action-card {
-                padding: 1.5rem;
+                padding: 1.25rem;
             }
 
             .wholesale-catalog-toolbar {
                 grid-template-columns: 1fr;
+                gap: 0.5rem;
             }
 
             .wholesale-catalog-grid {
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-                gap: 1rem;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
             }
 
             .wholesale-catalog-header {
                 flex-direction: column;
-                gap: 0.5rem;
+                gap: 0.35rem;
+                margin-bottom: 1rem;
+                padding-bottom: 0.85rem;
+            }
+
+            .wholesale-catalog-header-left h2 {
+                font-size: 1.2rem;
+            }
+
+            .wholesale-catalog-header-left p {
+                font-size: 0.8rem;
+            }
+
+            .wholesale-catalog-summary {
+                padding: 0.45rem 0.7rem;
+                font-size: 0.78rem;
+                flex-wrap: wrap;
+            }
+
+            .wholesale-product-card {
+                border-radius: 10px;
+            }
+
+            .wholesale-product-body {
+                padding: 0.65rem 0.7rem 0.7rem;
+                gap: 0.3rem;
+            }
+
+            .wholesale-product-name {
+                font-size: 0.8rem;
+                line-height: 1.3;
+            }
+
+            .wholesale-category-label {
+                font-size: 0.6rem;
+            }
+
+            .wholesale-price-row {
+                gap: 0.3rem;
+            }
+
+            .wholesale-price-main {
+                font-size: 1rem;
+            }
+
+            .wholesale-price-compare {
+                font-size: 0.7rem;
+            }
+
+            .ws-per-unit {
+                display: none;
+            }
+
+            .wholesale-stock-row {
+                font-size: 0.65rem;
+                padding: 0.2rem 0.4rem;
+            }
+
+            .ws-moq-hint {
+                font-size: 0.62rem;
+                flex-wrap: wrap;
+            }
+
+            .wholesale-moq-badge {
+                font-size: 0.58rem;
+                padding: 0.15rem 0.4rem;
+                top: 5px;
+                right: 5px;
+            }
+
+            .ws-discount-ribbon {
+                font-size: 0.58rem;
+                padding: 0.15rem 0.5rem;
+            }
+
+            .wholesale-product-actions {
+                flex-direction: column;
+                gap: 0.35rem;
+                padding-top: 0.55rem;
+            }
+
+            .ws-btn-detail {
+                min-height: 32px;
+                font-size: 0.72rem;
+                justify-content: center;
+                width: 100%;
+            }
+
+            .ws-btn-add {
+                min-height: 34px;
+                font-size: 0.75rem;
             }
             .mobile-profile-section {
                 display: flex !important;
@@ -1157,31 +1252,58 @@
             color: #334155;
         }
 
-        /* ===== ADDITIONAL RESPONSIVE CATALOG BREAKPOINTS ===== */
+        /* ===== SMALL MOBILE (≤480px) ===== */
         @media (max-width: 480px) {
+            .wholesale-section {
+                padding: 0.75rem;
+            }
+            .wholesale-section[style] {
+                padding: 0.75rem !important;
+            }
             .wholesale-catalog-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 0.75rem;
+                gap: 0.55rem;
             }
             .wholesale-product-body {
-                padding: 0.75rem 0.8rem 0.8rem;
+                padding: 0.5rem 0.55rem 0.6rem;
             }
             .wholesale-price-main {
-                font-size: 1.05rem;
+                font-size: 0.92rem;
             }
             .ws-moq-hint {
-                font-size: 0.67rem;
+                font-size: 0.58rem;
+            }
+            .wholesale-product-actions {
+                flex-direction: column;
+                gap: 0.3rem;
             }
             .ws-btn-detail,
             .ws-btn-add {
-                min-height: 34px;
-                font-size: 0.75rem;
+                min-height: 30px;
+                font-size: 0.7rem;
+            }
+            .ws-btn-detail {
+                justify-content: center;
+                width: 100%;
+            }
+            .wholesale-stock-row {
+                font-size: 0.6rem;
+                padding: 0.15rem 0.35rem;
+            }
+            .wholesale-stock-row::before {
+                width: 5px;
+                height: 5px;
             }
         }
 
+        /* ===== VERY SMALL (≤360px) — single column ===== */
         @media (max-width: 360px) {
             .wholesale-catalog-grid {
                 grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            .wholesale-product-actions {
+                flex-direction: row;
             }
         }
 
