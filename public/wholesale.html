@@ -341,25 +341,24 @@
         /* ===== IMAGE FIT FIX ===== */
         .wholesale-product-media-wrap {
             width: 100%;
-            aspect-ratio: 4 / 3;
+            /* aspect-ratio fallback via padding-top */
+            position: relative;
             overflow: hidden;
             background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            position: relative;
             flex-shrink: 0;
+            /* 4:3 ratio via padding-top for broadest browser support */
+            padding-top: 75%;
         }
 
         .wholesale-product-media {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
             object-position: center;
             display: block;
-            transition: transform 0.38s ease, opacity 0.25s ease;
-            opacity: 0;
-        }
-
-        .wholesale-product-media.img-loaded {
-            opacity: 1;
+            transition: transform 0.38s ease;
         }
 
         .wholesale-product-card:hover .wholesale-product-media {
@@ -374,12 +373,12 @@
             justify-content: center;
             color: #cbd5e1;
             font-size: 2.5rem;
-            transition: opacity 0.25s ease;
+            z-index: 0;
         }
 
-        .ws-img-placeholder.img-hidden {
-            opacity: 0;
-            pointer-events: none;
+        /* hide placeholder once image renders */
+        .wholesale-product-media-wrap.img-ready .ws-img-placeholder {
+            display: none;
         }
 
         /* Discount ribbon */
@@ -748,17 +747,7 @@
             display: none !important;
         }
 
-        .mobile-menu-toggle {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0.5rem;
-            font-size: 1.5rem;
-            color: var(--text-primary);
-        }
+        /* Let styles.css control visibility — only override for desktop hide */
 
         @media (max-width: 768px) {
             .wholesale-hero h1 {
@@ -928,9 +917,15 @@
             .mobile-menu-toggle {
                 display: none !important;
             }
-
             .navbar-menu {
                 display: flex !important;
+            }
+        }
+
+        /* Ensure hamburger is visible on mobile (overrides any base `display:none`) */
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: inline-flex !important;
             }
         }
 
@@ -1160,6 +1155,34 @@
 
         html[data-theme="dark"] .ws-img-placeholder {
             color: #334155;
+        }
+
+        /* ===== ADDITIONAL RESPONSIVE CATALOG BREAKPOINTS ===== */
+        @media (max-width: 480px) {
+            .wholesale-catalog-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            .wholesale-product-body {
+                padding: 0.75rem 0.8rem 0.8rem;
+            }
+            .wholesale-price-main {
+                font-size: 1.05rem;
+            }
+            .ws-moq-hint {
+                font-size: 0.67rem;
+            }
+            .ws-btn-detail,
+            .ws-btn-add {
+                min-height: 34px;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .wholesale-catalog-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         html[data-theme="dark"] .ws-btn-detail {
@@ -1776,21 +1799,22 @@
 
         // Dynamic image fit helpers
         window.wsImgLoaded = function(img) {
-            img.classList.add('img-loaded');
-            const placeholder = img.closest('.wholesale-product-media-wrap')?.querySelector('.ws-img-placeholder');
-            if (placeholder) placeholder.classList.add('img-hidden');
-            // Ensure portrait images are centered and covered
+            const wrap = img.closest('.wholesale-product-media-wrap');
+            if (wrap) wrap.classList.add('img-ready');
+            // For portrait images shift focus to top so face/label isn't cut
             if (img.naturalWidth > 0 && img.naturalHeight > 0) {
                 const ratio = img.naturalWidth / img.naturalHeight;
-                img.style.objectPosition = ratio < 0.7 ? 'center top' : 'center';
+                img.style.objectPosition = ratio < 0.75 ? 'center top' : 'center center';
             }
         };
 
         window.wsImgError = function(img) {
+            // Prevent infinite loop if placeholder also missing
+            if (img.dataset.errored) return;
+            img.dataset.errored = '1';
             img.src = '/images/placeholder.jpg';
-            img.classList.add('img-loaded');
-            const placeholder = img.closest('.wholesale-product-media-wrap')?.querySelector('.ws-img-placeholder');
-            if (placeholder) placeholder.classList.add('img-hidden');
+            const wrap = img.closest('.wholesale-product-media-wrap');
+            if (wrap) wrap.classList.add('img-ready');
         };
 
         function getPrimaryProductImage(product) {
@@ -1895,9 +1919,12 @@
                 `;
             }).join('');
 
-            // Activate images already in browser cache (onload won't fire)
+            // Activate images already in browser cache (onload won't fire for cached)
             container.querySelectorAll('.wholesale-product-media').forEach(img => {
-                if (img.complete && img.naturalWidth > 0) wsImgLoaded(img);
+                if (img.complete) {
+                    if (img.naturalWidth > 0) wsImgLoaded(img);
+                    else wsImgError(img);
+                }
             });
         }
 
