@@ -60,6 +60,11 @@ router.get('/orders', adminController.getAllOrders);
 router.get('/orders/:id', adminController.getOrderDetails);
 router.put('/orders/:id/status', adminController.updateOrderStatus);
 
+// Returns Management
+router.get('/returns', adminController.getAllReturns);
+router.get('/returns/stats', adminController.getReturnStats);
+router.put('/returns/:id/status', adminController.updateReturnStatus);
+
 // Homepage Sections Management
 router.get('/homepage-sections', adminController.getAllHomepageSections);
 router.post('/homepage-sections', adminController.createHomepageSection);

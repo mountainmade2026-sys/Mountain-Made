@@ -1511,6 +1511,11 @@
                 <h2>Order History</h2>
                 <p style="margin:0 0 1.25rem; color:#64748b;">Review your wholesale orders, status updates, and totals.</p>
                 <div id="wholesale-orders-list" class="wholesale-orders-list"></div>
+
+                <div style="margin-top:2.5rem;">
+                    <h3 style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;color:var(--primary,#1a4731);"><i class="fas fa-undo-alt"></i> My Returns</h3>
+                    <div id="wholesale-returns-list" class="wholesale-orders-list"></div>
+                </div>
             </section>
 
             <!-- Important Information -->
@@ -1878,6 +1883,12 @@
                                 <i class="fas fa-times-circle"></i> Cancel Order
                             </button>
                         </div>` : ''}
+                        ${order.status === 'delivered' ? `
+                        <div class="ws-order-footer">
+                            <button class="ws-btn-cancel" onclick="openWholesaleReturnModal(${order.id})" style="color:var(--warning,#d97706);border-color:var(--warning,#d97706);">
+                                <i class="fas fa-undo-alt"></i> Return Products
+                            </button>
+                        </div>` : ''}
                     </div>
                 `}).join('');
 
@@ -1916,6 +1927,132 @@
                 btn.disabled = false;
                 btn.innerHTML = originalText;
                 alert(err?.message || 'Failed to cancel order. Please try again.');
+            }
+        }
+
+        // ── Wholesale Return Functions ────────────────────────────────
+        let _wsOrdersCache = [];
+
+        const _origLoadWholesaleOrders = loadWholesaleOrders;
+        loadWholesaleOrders = async function() {
+            await _origLoadWholesaleOrders();
+            // Cache orders for return modal
+            try {
+                const data = await api.get('/orders');
+                _wsOrdersCache = data.orders || [];
+            } catch(e) { /* ignore */ }
+            await loadWholesaleReturns();
+        };
+
+        function openWholesaleReturnModal(orderId) {
+            const order = _wsOrdersCache.find(o => o.id === orderId);
+            if (!order || order.status !== 'delivered') return;
+
+            const items = order.items || [];
+            const itemsHtml = items.map(item => `
+                <label style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0;border-bottom:1px solid #e5e7eb;">
+                    <input type="checkbox" class="ws-return-item-cb" data-order-item-id="${item.id}" data-quantity="${item.quantity}" checked>
+                    <div style="flex:1;"><div style="font-weight:600;">${item.product_name}</div>
+                    <div style="color:#64748b;font-size:0.85rem;">Qty: ${item.quantity} &times; ${formatCurrency(item.price || item.subtotal / item.quantity)}</div></div>
+                    <span style="font-weight:600;">${formatCurrency(item.subtotal)}</span>
+                </label>
+            `).join('');
+
+            const overlay = document.createElement('div');
+            overlay.id = 'ws-return-modal';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+            overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+                    <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="margin:0;font-size:1.1rem;"><i class="fas fa-undo-alt" style="color:#d97706;"></i> Return Products</h3>
+                        <button onclick="document.getElementById('ws-return-modal').remove()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;">&times;</button>
+                    </div>
+                    <div style="padding:1.25rem 1.5rem;">
+                        <p style="margin:0 0 0.5rem;color:#64748b;font-size:0.9rem;">Order <strong>#${order.order_number}</strong></p>
+                        <p style="margin:0 0 1rem;font-size:0.88rem;">Select items to return:</p>
+                        ${itemsHtml}
+                        <div style="margin-top:1rem;">
+                            <label style="display:block;font-weight:600;margin-bottom:0.35rem;">Reason for Return</label>
+                            <textarea id="ws-return-reason" rows="3" style="width:100%;padding:0.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:0.95rem;resize:vertical;" placeholder="Describe why you want to return..."></textarea>
+                        </div>
+                    </div>
+                    <div style="padding:1rem 1.5rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:0.75rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ws-return-modal').remove()">Cancel</button>
+                        <button class="btn btn-primary btn-sm" id="ws-return-submit" onclick="submitWholesaleReturn(${orderId})">
+                            <i class="fas fa-paper-plane"></i> Submit Return
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        async function submitWholesaleReturn(orderId) {
+            const reason = (document.getElementById('ws-return-reason').value || '').trim();
+            if (!reason) { alert('Please provide a reason.'); return; }
+
+            const cbs = document.querySelectorAll('.ws-return-item-cb:checked');
+            if (!cbs.length) { alert('Select at least one item.'); return; }
+
+            const items = [];
+            cbs.forEach(cb => items.push({ order_item_id: parseInt(cb.dataset.orderItemId), quantity: parseInt(cb.dataset.quantity) }));
+
+            const btn = document.getElementById('ws-return-submit');
+            if (btn) btn.disabled = true;
+
+            try {
+                await api.post('/returns', { order_id: orderId, reason, items });
+                alert('Return request submitted successfully!');
+                document.getElementById('ws-return-modal')?.remove();
+                await loadWholesaleReturns();
+            } catch (err) {
+                alert(err?.message || 'Failed to submit return.');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function loadWholesaleReturns() {
+            const container = document.getElementById('wholesale-returns-list');
+            if (!container) return;
+            try {
+                const resp = await api.get('/returns');
+                const returns = resp.returns || [];
+                if (!returns.length) {
+                    container.innerHTML = '<div class="ws-order-card" style="padding:1.5rem;text-align:center;color:#64748b;">No return requests yet</div>';
+                    return;
+                }
+
+                const statusMap = { requested:'🕐 Requested', approved:'✅ Approved', received:'📦 Received', refunded:'💰 Refunded', rejected:'❌ Rejected' };
+                const statusColor = { requested:'#d97706', approved:'#3b82f6', received:'#1a4731', refunded:'#10b981', rejected:'#ef4444' };
+
+                container.innerHTML = returns.map(r => {
+                    const items = (r.items || []).filter(i => i.id);
+                    return `
+                    <div class="ws-order-card">
+                        <div class="ws-order-head">
+                            <div>
+                                <div class="ws-order-id">Return RET-${r.id}</div>
+                                <div class="ws-order-date">Order #${r.order_number || r.order_id} &bull; ${formatDate(r.created_at)}</div>
+                            </div>
+                            <div class="ws-order-head-right">
+                                <span style="color:${statusColor[r.status] || '#666'};font-weight:600;font-size:0.85rem;">${statusMap[r.status] || r.status}</span>
+                                <span class="ws-order-total">₹${parseFloat(r.refund_amount || 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="ws-order-body">
+                            <div class="ws-order-items">
+                                ${items.map(i => `<div class="ws-order-item"><span class="ws-order-item-name">${i.product_name || 'Product'}</span><span class="ws-order-item-qty">× ${i.quantity}</span><span class="ws-order-item-price">₹${(i.price * i.quantity).toFixed(2)}</span></div>`).join('')}
+                            </div>
+                            <div style="margin-top:0.5rem;color:#64748b;font-size:0.85rem;"><strong>Reason:</strong> ${r.reason || '—'}</div>
+                            ${r.admin_notes ? `<div style="margin-top:0.3rem;color:#64748b;font-size:0.85rem;"><strong>Admin:</strong> ${r.admin_notes}</div>` : ''}
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            } catch(e) {
+                container.innerHTML = '<div class="ws-order-card" style="padding:1.5rem;text-align:center;color:#64748b;">Could not load returns</div>';
             }
         }
 

@@ -1284,6 +1284,10 @@
                 <span id="customer-orders-dot" class="dot-indicator hidden" title="New orders"></span>
                 <span id="customer-orders-badge" class="badge-count" style="display: none;">0</span>
             </div>
+            <div class="admin-nav-item" onclick="showSection('returns')">
+                <i class="fas fa-undo-alt"></i> Returns
+                <span id="returns-badge" class="badge-count" style="display: none;">0</span>
+            </div>
 
             <div class="sidebar-section-title">Customers</div>
             <div class="admin-nav-item" onclick="showSection('customers')">
@@ -1730,6 +1734,35 @@
                 </div>
 
                 <div id="customer-orders-list"></div>
+            </div>
+
+            <!-- Returns Section -->
+            <div id="returns" class="section">
+                <div class="admin-header">
+                    <h1><i class="fas fa-undo-alt"></i> Product Returns</h1>
+                    <button class="btn btn-secondary" onclick="loadReturns()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+
+                <div class="stats-grid" id="returns-stats-container" style="margin-bottom:1.5rem;"></div>
+
+                <div class="controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="returns-search" placeholder="Search returns..." onkeyup="filterReturns()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="returns-status-filter" class="form-input" onchange="filterReturns()">
+                            <option value="">All Statuses</option>
+                            <option value="requested">Requested</option>
+                            <option value="approved">Approved</option>
+                            <option value="received">Received</option>
+                            <option value="refunded">Refunded</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="returns-list"></div>
             </div>
 
             <!-- Customers Section -->
@@ -3347,7 +3380,7 @@
     // Admin dashboard with improved mobile handling
     (function(){
         const sectionIds = [
-                'dashboard','manage-products','upload-products','categories','homepage-sections','stock-reports','order-history','customers-orders',
+                'dashboard','manage-products','upload-products','categories','homepage-sections','stock-reports','order-history','customers-orders','returns',
             'customers','activities','messages','users','wholesale','admin-license','site-settings','database-backup'
             ];
 
@@ -3453,6 +3486,7 @@
                 case 'stock-reports': loadStockReports(); break;
                 case 'order-history': loadOrders(); break;
                 case 'customers-orders': loadCustomerOrders(); break;
+                case 'returns': loadReturns(); break;
                 case 'customers': loadCustomers(); break;
                 case 'activities': loadActivities(); break;
                 case 'messages':
@@ -5721,6 +5755,202 @@
             tick(true);
             __pendingOrdersWatcherTimer = setInterval(() => tick(false), 15000);
         }
+
+        // ══════════════════════════════════════════════════════════════════
+        // RETURNS MANAGEMENT
+        // ══════════════════════════════════════════════════════════════════
+
+        window._returnsCache = [];
+
+        async function loadReturns() {
+            try {
+                showLoading('returns-list');
+
+                // Load stats
+                try {
+                    const statsResp = await api.get('/admin/returns/stats');
+                    const s = statsResp.stats || {};
+                    document.getElementById('returns-stats-container').innerHTML = `
+                        <div class="stat-card warning" style="cursor:pointer;" onclick="document.getElementById('returns-status-filter').value='requested';filterReturns();">
+                            <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+                            <div class="stat-card-label">Pending</div>
+                            <div class="stat-card-value">${parseInt(s.pending_returns) || 0}</div>
+                        </div>
+                        <div class="stat-card info" style="cursor:pointer;" onclick="document.getElementById('returns-status-filter').value='approved';filterReturns();">
+                            <div class="stat-card-icon"><i class="fas fa-check"></i></div>
+                            <div class="stat-card-label">Approved</div>
+                            <div class="stat-card-value">${parseInt(s.approved_returns) || 0}</div>
+                        </div>
+                        <div class="stat-card primary" style="cursor:pointer;" onclick="document.getElementById('returns-status-filter').value='received';filterReturns();">
+                            <div class="stat-card-icon"><i class="fas fa-box-open"></i></div>
+                            <div class="stat-card-label">Received</div>
+                            <div class="stat-card-value">${parseInt(s.received_returns) || 0}</div>
+                        </div>
+                        <div class="stat-card success" style="cursor:pointer;" onclick="document.getElementById('returns-status-filter').value='refunded';filterReturns();">
+                            <div class="stat-card-icon"><i class="fas fa-money-bill-wave"></i></div>
+                            <div class="stat-card-label">Refunded</div>
+                            <div class="stat-card-value">${parseInt(s.refunded_returns) || 0}</div>
+                        </div>
+                    `;
+                    // Update badge
+                    const badge = document.getElementById('returns-badge');
+                    const pending = parseInt(s.pending_returns) || 0;
+                    if (badge) {
+                        badge.textContent = pending;
+                        badge.style.display = pending > 0 ? 'inline-flex' : 'none';
+                    }
+                } catch (e) { console.warn('Returns stats failed:', e); }
+
+                const resp = await api.get('/admin/returns');
+                const returns = resp.returns || [];
+                window._returnsCache = returns;
+                renderReturns(returns);
+            } catch (error) {
+                console.error('Load returns error:', error);
+                document.getElementById('returns-list').innerHTML = '<div class="empty-state"><p>Error loading returns</p></div>';
+            }
+        }
+
+        function filterReturns() {
+            const query = (document.getElementById('returns-search').value || '').trim().toLowerCase();
+            const statusFilter = (document.getElementById('returns-status-filter').value || '').trim();
+            let filtered = window._returnsCache || [];
+            if (statusFilter) filtered = filtered.filter(r => r.status === statusFilter);
+            if (query) filtered = filtered.filter(r =>
+                (r.customer_name || '').toLowerCase().includes(query) ||
+                (r.customer_email || '').toLowerCase().includes(query) ||
+                (r.order_number || '').toLowerCase().includes(query) ||
+                String(r.id).includes(query)
+            );
+            renderReturns(filtered);
+        }
+
+        function getReturnStatusBadge(status) {
+            const map = {
+                'requested': '<span class="badge badge-warning">Requested</span>',
+                'approved': '<span class="badge badge-info">Approved</span>',
+                'received': '<span class="badge badge-primary" style="background:var(--primary);color:#fff;">Received</span>',
+                'refunded': '<span class="badge badge-success">Refunded</span>',
+                'rejected': '<span class="badge badge-danger">Rejected</span>'
+            };
+            return map[status] || `<span class="badge">${status}</span>`;
+        }
+
+        function renderReturns(returns) {
+            const container = document.getElementById('returns-list');
+            if (!returns.length) {
+                container.innerHTML = '<div class="empty-state"><p>No returns found</p></div>';
+                return;
+            }
+
+            let html = '<div class="data-table-container"><table class="data-table"><thead><tr>' +
+                '<th>Return #</th><th>Order</th><th>Customer</th><th>Items</th><th>Refund</th><th>Status</th><th>Date</th><th>Actions</th>' +
+                '</tr></thead><tbody>';
+
+            returns.forEach(r => {
+                const items = (r.items || []).filter(i => i.id);
+                const itemSummary = items.map(i => `${i.product_name || 'Product'} x${i.quantity}`).join(', ');
+                const roleBadge = r.customer_role === 'wholesale'
+                    ? ' <span class="badge badge-info" style="font-size:0.65rem;">Wholesale</span>'
+                    : '';
+
+                html += `<tr>
+                    <td><strong>RET-${r.id}</strong></td>
+                    <td>#${r.order_number || r.order_id}</td>
+                    <td>${r.customer_name || 'Unknown'}${roleBadge}<br><small style="color:var(--text-muted);">${r.customer_email || ''}</small></td>
+                    <td style="max-width:200px;white-space:normal;font-size:0.85rem;">${itemSummary || '—'}</td>
+                    <td style="font-weight:600;">₹${parseFloat(r.refund_amount || 0).toFixed(2)}</td>
+                    <td>${getReturnStatusBadge(r.status)}</td>
+                    <td>${formatDate(r.created_at)}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="action-btn" onclick="openReturnActionModal(${r.id})" title="Manage">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        function openReturnActionModal(returnId) {
+            const r = (window._returnsCache || []).find(x => x.id === returnId);
+            if (!r) return;
+
+            const items = (r.items || []).filter(i => i.id);
+            const itemsHtml = items.map(i => `
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
+                    ${i.product_image ? `<img src="${i.product_image}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">` : ''}
+                    <div>
+                        <div style="font-weight:600;">${i.product_name || 'Product #' + i.product_id}</div>
+                        <div style="color:var(--text-muted);font-size:0.85rem;">Qty: ${i.quantity} × ₹${parseFloat(i.price).toFixed(2)}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const statusOptions = ['requested','approved','received','refunded','rejected']
+                .map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`)
+                .join('');
+
+            const modalHtml = `
+                <div class="modal active" id="return-action-modal" onclick="if(event.target===this)this.remove()">
+                    <div class="modal-content" style="max-width:560px;">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-undo-alt"></i> Return RET-${r.id}</h3>
+                            <button class="modal-close" onclick="document.getElementById('return-action-modal').remove()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="margin-bottom:1rem;">
+                                <strong>Order:</strong> #${r.order_number || r.order_id}<br>
+                                <strong>Customer:</strong> ${r.customer_name} (${r.customer_email})<br>
+                                <strong>Refund Amount:</strong> ₹${parseFloat(r.refund_amount || 0).toFixed(2)}<br>
+                                <strong>Reason:</strong> ${r.reason || '—'}
+                            </div>
+                            <div style="margin-bottom:1rem;">
+                                <strong>Items:</strong>
+                                ${itemsHtml}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Update Status</label>
+                                <select id="return-new-status" class="form-input">${statusOptions}</select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Admin Notes</label>
+                                <textarea id="return-admin-notes" class="form-input" rows="3" placeholder="Optional notes...">${r.admin_notes || ''}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="document.getElementById('return-action-modal').remove()">Cancel</button>
+                            <button class="btn btn-primary" onclick="submitReturnAction(${r.id})">
+                                <i class="fas fa-check"></i> Update
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        async function submitReturnAction(returnId) {
+            const status = document.getElementById('return-new-status').value;
+            const admin_notes = document.getElementById('return-admin-notes').value.trim();
+
+            try {
+                const resp = await api.put('/admin/returns/' + returnId + '/status', { status, admin_notes });
+                showAlert(resp.message || 'Return updated.', 'success');
+                const modal = document.getElementById('return-action-modal');
+                if (modal) modal.remove();
+                await loadReturns();
+            } catch (err) {
+                showAlert(err.message || 'Failed to update return.', 'error');
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════
 
         async function loadCustomers() {
             try {

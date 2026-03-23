@@ -2650,3 +2650,137 @@ exports.deleteAllData = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete all data.' });
   }
 };
+
+// ══════════════════════════════════════════════════════════════════════════
+// RETURNS MANAGEMENT
+// ══════════════════════════════════════════════════════════════════════════
+
+exports.getAllReturns = async (req, res) => {
+  try {
+    const statusFilter = (req.query.status || '').trim();
+    const where = [];
+    const params = [];
+
+    if (statusFilter) {
+      params.push(statusFilter);
+      where.push(`r.status = $${params.length}`);
+    }
+
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const result = await db.query(
+      `SELECT r.*,
+              u.full_name as customer_name, u.email as customer_email, u.role as customer_role,
+              o.order_number, o.total_amount as order_total,
+              json_agg(json_build_object(
+                'id', ri.id,
+                'order_item_id', ri.order_item_id,
+                'product_id', ri.product_id,
+                'quantity', ri.quantity,
+                'price', ri.price,
+                'product_name', p.name,
+                'product_image', COALESCE(p.image_url, '')
+              )) as items
+       FROM returns r
+       JOIN users u ON u.id = r.user_id
+       JOIN orders o ON o.id = r.order_id
+       LEFT JOIN return_items ri ON ri.return_id = r.id
+       LEFT JOIN products p ON p.id = ri.product_id
+       ${whereClause}
+       GROUP BY r.id, u.full_name, u.email, u.role, o.order_number, o.total_amount
+       ORDER BY r.created_at DESC`
+      , params
+    );
+
+    res.json({ returns: result.rows });
+  } catch (error) {
+    console.error('Get all returns error:', error);
+    res.status(500).json({ error: 'Failed to fetch returns.' });
+  }
+};
+
+exports.updateReturnStatus = async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    const { id } = req.params;
+    const { status, admin_notes } = req.body;
+    const validStatuses = ['requested', 'approved', 'received', 'refunded', 'rejected'];
+
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    const existing = await client.query('SELECT * FROM returns WHERE id = $1', [id]);
+    if (!existing.rows.length) return res.status(404).json({ error: 'Return not found.' });
+
+    await client.query('BEGIN');
+
+    const updateFields = ['status = $1', 'updated_at = NOW()'];
+    const updateParams = [status];
+
+    if (admin_notes !== undefined) {
+      updateParams.push(admin_notes.substring(0, 2000));
+      updateFields.push(`admin_notes = $${updateParams.length}`);
+    }
+
+    if (status === 'refunded' || status === 'rejected') {
+      updateFields.push('processed_at = NOW()');
+    }
+
+    updateParams.push(id);
+    await client.query(
+      `UPDATE returns SET ${updateFields.join(', ')} WHERE id = $${updateParams.length}`,
+      updateParams
+    );
+
+    // If received — restock product quantities
+    if (status === 'received') {
+      const returnItems = await client.query(
+        'SELECT product_id, quantity FROM return_items WHERE return_id = $1',
+        [id]
+      );
+      for (const ri of returnItems.rows) {
+        await client.query(
+          'UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2',
+          [ri.quantity, ri.product_id]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    const updated = await client.query(
+      `SELECT r.*, u.full_name as customer_name, o.order_number
+       FROM returns r JOIN users u ON u.id = r.user_id JOIN orders o ON o.id = r.order_id
+       WHERE r.id = $1`, [id]
+    );
+
+    res.json({ message: `Return status updated to "${status}".`, return: updated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Update return status error:', error);
+    res.status(500).json({ error: 'Failed to update return.' });
+  } finally {
+    client.release();
+  }
+};
+
+exports.getReturnStats = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'requested') as pending_returns,
+        COUNT(*) FILTER (WHERE status = 'approved') as approved_returns,
+        COUNT(*) FILTER (WHERE status = 'received') as received_returns,
+        COUNT(*) FILTER (WHERE status = 'refunded') as refunded_returns,
+        COUNT(*) FILTER (WHERE status = 'rejected') as rejected_returns,
+        COUNT(*) as total_returns,
+        COALESCE(SUM(refund_amount) FILTER (WHERE status = 'refunded'), 0) as total_refunded
+      FROM returns
+    `);
+    res.json({ stats: result.rows[0] });
+  } catch (error) {
+    console.error('Get return stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch return stats.' });
+  }
+};
