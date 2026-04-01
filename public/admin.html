@@ -3076,14 +3076,15 @@
                                 </div>
                                 <div>
                                     <label class="form-label">Price (₹) *</label>
-                                    <input type="number" id="product-price" class="form-input" placeholder="0.00" step="0.01" required>
+                                    <input type="number" id="product-price" class="form-input" placeholder="0.00" step="0.01" required oninput="calcDiscountPreview('product-price','product-discount-percent','product-discount-preview')">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div>
-                                    <label class="form-label">Discount Price (₹) <small style="color: var(--text-muted); font-weight: normal;">Optional</small></label>
-                                    <input type="number" id="product-discount-price" class="form-input" placeholder="0.00" step="0.01">
+                                    <label class="form-label">Discount % <small style="color: var(--text-muted); font-weight: normal;">Optional, 1–100</small></label>
+                                    <input type="number" id="product-discount-percent" class="form-input" placeholder="e.g. 10" min="1" max="100" step="0.01" oninput="calcDiscountPreview('product-price','product-discount-percent','product-discount-preview')">
+                                    <small id="product-discount-preview" style="color:var(--success,#10b981);display:block;margin-top:4px;min-height:1.2em;"></small>
                                 </div>
                                 <div>
                                     <label class="form-label">Wholesale Price (₹)</label>
@@ -3312,14 +3313,15 @@
                                 </div>
                                 <div>
                                     <label class="form-label">Price (₹) *</label>
-                                    <input type="number" id="edit-product-price" class="form-input" placeholder="0.00" step="0.01" required>
+                                    <input type="number" id="edit-product-price" class="form-input" placeholder="0.00" step="0.01" required oninput="calcDiscountPreview('edit-product-price','edit-product-discount-percent','edit-product-discount-preview')">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div>
-                                    <label class="form-label">Discount Price (₹) <small style="color: var(--text-muted); font-weight: normal;">Optional</small></label>
-                                    <input type="text" id="edit-product-discount-price" class="form-input" placeholder="0.00 or type -10 to reduce price" onblur="updateDiscountFromMainPrice()">
+                                    <label class="form-label">Discount % <small style="color: var(--text-muted); font-weight: normal;">Optional, 1–100</small></label>
+                                    <input type="number" id="edit-product-discount-percent" class="form-input" placeholder="e.g. 10" min="1" max="100" step="0.01" oninput="calcDiscountPreview('edit-product-price','edit-product-discount-percent','edit-product-discount-preview')">
+                                    <small id="edit-product-discount-preview" style="color:var(--success,#10b981);display:block;margin-top:4px;min-height:1.2em;"></small>
                                 </div>
                                 <div>
                                     <label class="form-label">Wholesale Price (₹)</label>
@@ -3590,29 +3592,19 @@
             });
         };
 
-        window.updateDiscountFromMainPrice = function() {
-            const priceInput    = document.getElementById('edit-product-price');
-            const discountInput = document.getElementById('edit-product-discount-price');
-            if (!priceInput || !discountInput) return;
+        window.updateDiscountFromMainPrice = function() { /* legacy no-op */ };
 
-            // Original price set when modal opened — never changes during editing.
-            const basePrice = parseFloat(priceInput.getAttribute('data-base-price') || priceInput.value || '');
-            if (!Number.isFinite(basePrice)) return;
-
-            const raw = discountInput.value.trim();
-            if (!raw) return;
-
-            // Only act when user typed a signed offset like -10 or +50.
-            // Plain numbers (e.g. 750) are treated as a direct discount price — leave as-is.
-            if (!/^[+\-]\d+(\.\d+)?$/.test(raw)) return;
-
-            const computed = basePrice + parseFloat(raw);
-            if (!Number.isFinite(computed) || computed <= 0) return;
-
-            // Put the computed sale price INTO the discount field.
-            // Price field stays at original (900) → shows crossed-out.
-            // Discount field becomes result (890) → shows as sale price.
-            discountInput.value = computed.toFixed(2);
+        window.calcDiscountPreview = function(priceId, pctId, previewId) {
+            const price = parseFloat(document.getElementById(priceId)?.value || '');
+            const pct   = parseFloat(document.getElementById(pctId)?.value   || '');
+            const preview = document.getElementById(previewId);
+            if (!preview) return;
+            if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(pct) || pct < 1 || pct > 100) {
+                preview.textContent = '';
+                return;
+            }
+            const discounted = price * (1 - pct / 100);
+            preview.textContent = `Discounted price: \u20b9${discounted.toFixed(2)} (saving \u20b9${(price - discounted).toFixed(2)})`;
         };
     // Admin dashboard with improved mobile handling
     (function(){
@@ -8056,7 +8048,8 @@
             if (modal) {
                 modal.classList.remove('show');
                 document.getElementById('add-product-form').reset();
-                document.getElementById('product-discount-price').value = '';
+                const discountPreview = document.getElementById('product-discount-preview');
+                if (discountPreview) discountPreview.textContent = '';
                 // Clear images preview
                 const imagesInput = document.getElementById('product-images');
                 if (imagesInput) {
@@ -8388,7 +8381,10 @@
             try {
                 const name = document.getElementById('product-name').value;
                 const price = document.getElementById('product-price').value;
-                const discount_price = document.getElementById('product-discount-price').value || null;
+                const discountPct = parseFloat(document.getElementById('product-discount-percent').value || '');
+                const discount_price = (Number.isFinite(discountPct) && discountPct >= 1 && discountPct <= 100)
+                    ? parseFloat(price) * (1 - discountPct / 100)
+                    : null;
                 const stock = document.getElementById('product-stock').value;
                 const category_id = document.getElementById('product-category').value;
                 let homepage_section_id = document.getElementById('product-homepage-section').value || null;
@@ -8412,8 +8408,8 @@
                     return;
                 }
 
-                if (discount_price && parseFloat(discount_price) >= parseFloat(price)) {
-                    showAlert('Discount price should be less than the main price.', 'error');
+                if (discount_price !== null && (!Number.isFinite(discount_price) || discount_price >= parseFloat(price))) {
+                    showAlert('Discount percentage produced an invalid price. Please enter a value between 1 and 100.', 'error');
                     return;
                 }
 
@@ -8694,45 +8690,22 @@
             document.getElementById('edit-product-id').value = product.id;
             document.getElementById('edit-product-name').value = product.name || '';
             document.getElementById('edit-product-price').value = product.price || '';
-            document.getElementById('edit-product-discount-price').value = product.discount_price || '';
             document.getElementById('edit-product-wholesale-price').value = product.wholesale_price || '';
-            document.getElementById('edit-product-discount-price').value = product.discount_price || '';
             document.getElementById('edit-product-stock').value = product.stock_quantity || 0;
 
-            const editPriceInputForSave = document.getElementById('edit-product-price');
-            if (editPriceInputForSave) {
-                const savedPrice = (product.price === null || product.price === undefined || product.price === '')
-                    ? ''
-                    : String(product.price);
-                editPriceInputForSave.setAttribute('data-saved-price', savedPrice);
-                editPriceInputForSave.setAttribute('data-base-price', savedPrice);
-            }
-
-            const editDiscountInput = document.getElementById('edit-product-discount-price');
-            if (editDiscountInput) {
-                const savedDiscount = (product.discount_price === null || product.discount_price === undefined || product.discount_price === '')
-                    ? ''
-                    : String(product.discount_price);
-                editDiscountInput.setAttribute('data-saved-discount', savedDiscount);
-            }
-
-            const editPriceInput = document.getElementById('edit-product-price');
-            if (editPriceInput && editPriceInput.getAttribute('data-discount-adjust-bound') !== '1') {
-                editPriceInput.setAttribute('data-discount-adjust-bound', '1');
-                editPriceInput.addEventListener('input', function() {
-                    const baseRaw = String(editPriceInput.value || '').trim();
-                    editPriceInput.setAttribute('data-base-price', baseRaw);
-                    editPriceInput.setAttribute('data-saved-price', baseRaw);
-                });
-            }
-
-            if (editDiscountInput && editDiscountInput.getAttribute('data-discount-calc-bound') !== '1') {
-                editDiscountInput.setAttribute('data-discount-calc-bound', '1');
-                editDiscountInput.addEventListener('keydown', function(e) {
-                    if (e.key !== 'Enter') return;
-                    e.preventDefault();
-                    window.updateDiscountFromMainPrice('discount');
-                });
+            // Reverse-calculate discount % from saved discount_price
+            const editPctInput = document.getElementById('edit-product-discount-percent');
+            if (editPctInput) {
+                const basePrice = parseFloat(product.price || '');
+                const savedDiscount = parseFloat(product.discount_price || '');
+                if (Number.isFinite(basePrice) && basePrice > 0 && Number.isFinite(savedDiscount) && savedDiscount < basePrice) {
+                    const pct = ((basePrice - savedDiscount) / basePrice) * 100;
+                    editPctInput.value = parseFloat(pct.toFixed(2));
+                } else {
+                    editPctInput.value = '';
+                }
+                // Trigger preview immediately
+                window.calcDiscountPreview('edit-product-price', 'edit-product-discount-percent', 'edit-product-discount-preview');
             }
 
             document.getElementById('edit-product-category').value = product.category_id || '';
@@ -8811,6 +8784,8 @@
             if (modal) {
                 modal.classList.remove('show');
                 document.getElementById('edit-product-form').reset();
+                const editDiscountPreview = document.getElementById('edit-product-discount-preview');
+                if (editDiscountPreview) editDiscountPreview.textContent = '';
                 // Clear images
                 const editImagesInput = document.getElementById('edit-product-images');
                 if (editImagesInput) {
@@ -9039,8 +9014,11 @@
                 }
                 const description = document.getElementById('edit-product-description').value;
                 const wholesale_price = document.getElementById('edit-product-wholesale-price').value || null;
-                const discountInputEl = document.getElementById('edit-product-discount-price');
-                const discount_price = discountInputEl?.value || null;
+                const discountPct = parseFloat(document.getElementById('edit-product-discount-percent')?.value || '');
+                const parsedPrice = parseFloat(price);
+                const parsedDiscountPrice = (Number.isFinite(discountPct) && discountPct >= 1 && discountPct <= 100)
+                    ? parsedPrice * (1 - discountPct / 100)
+                    : null;
                 const min_wholesale_qty = document.getElementById('edit-product-min-wholesale').value || 10;
                 const imageFiles = editProductSelectedImages;
 
@@ -9055,21 +9033,8 @@
                     return;
                 }
 
-                const parsedPrice = parseFloat(price);
-                const parsedDiscountPrice = discount_price ? parseFloat(discount_price) : null;
-
                 if (!Number.isFinite(parsedPrice)) {
                     showAlert('Please enter a valid price.', 'error');
-                    return;
-                }
-
-                if (discount_price && !Number.isFinite(parsedDiscountPrice)) {
-                    showAlert('Please enter a valid discount price.', 'error');
-                    return;
-                }
-
-                if (Number.isFinite(parsedDiscountPrice) && parsedDiscountPrice >= parsedPrice) {
-                    showAlert('Discount price must be less than the base price.', 'error');
                     return;
                 }
 
