@@ -1057,6 +1057,18 @@
             await loadCategories();
             await loadProducts();
 
+            // Pre-select category from URL param (e.g. coming from "Shop by Category")
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlCategoryId = parseInt(urlParams.get('category'), 10);
+            if (urlCategoryId) {
+                const cb = document.getElementById(`cat-${urlCategoryId}`);
+                if (cb) {
+                    cb.checked = true;
+                    selectedCategories.add(urlCategoryId);
+                    applyFilters();
+                }
+            }
+
             // Wire up slider (dynamic filtering on drag)
             const slider = document.getElementById('price-slider');
             if (slider) {
