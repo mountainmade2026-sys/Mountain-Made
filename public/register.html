@@ -524,8 +524,63 @@
             }
         }
 
+        // Native Capacitor Google sign-up (Android/iOS)
+        async function nativeGoogleSignup() {
+            try {
+                const GoogleAuth = window.Capacitor?.Plugins?.GoogleAuth;
+                if (!GoogleAuth) {
+                    showAlert('Google sign-in plugin not available. Please rebuild the app.', 'error');
+                    return;
+                }
+                const userData = getRegistrationFormData();
+                if (userData.role === 'wholesale') {
+                    if (!userData.business_name || !userData.tax_id || !userData.address_line1 || !userData.city || !userData.state || !userData.postal_code) {
+                        showAlert('Business name, tax ID, and address are required for wholesale accounts.', 'error');
+                        return;
+                    }
+                }
+                await GoogleAuth.initialize({
+                    clientId: '29806007455-d3b8t5kfkqljf2eef819c9otpgtsp2u9.apps.googleusercontent.com',
+                    scopes: ['profile', 'email'],
+                    grantOfflineAccess: false
+                });
+                const user = await GoogleAuth.signIn();
+                const idToken = user?.authentication?.idToken;
+                if (!idToken) throw new Error('Google sign-in did not return a token.');
+                const payload = {
+                    id_token: idToken,
+                    role: userData.role,
+                    full_name: userData.full_name,
+                    business_name: userData.business_name,
+                    tax_id: userData.tax_id,
+                    address_line1: userData.address_line1,
+                    address_line2: userData.address_line2,
+                    city: userData.city,
+                    state: userData.state,
+                    postal_code: userData.postal_code
+                };
+                await api.post('/auth/google', payload);
+                showAlert('Google registration successful!', 'success');
+                setTimeout(() => {
+                    if (userData.role === 'wholesale') {
+                        showAlert('Your account is pending approval.', 'info');
+                        setTimeout(() => window.location.href = '/', 2000);
+                    } else {
+                        window.location.href = redirectUrl || '/';
+                    }
+                }, 1000);
+            } catch (error) {
+                const msg = String(error?.message || error || 'Google sign-up failed.');
+                if (msg.toLowerCase().includes('cancelled') || msg.toLowerCase().includes('canceled')) return;
+                showAlert(msg, 'error');
+            }
+        }
+
         async function loadGoogleClientConfig() {
-            if (isCapacitorApp) return; // skip in mobile app
+            if (isCapacitorApp) {
+                if (googleSignupBtn) googleSignupBtn.style.display = 'flex';
+                return;
+            }
             try {
                 if (!googleClientConfig?.enabled || !googleClientConfig?.clientId) {
                     googleSignupBtn.disabled = true;
@@ -588,6 +643,10 @@
         }
 
         async function startGoogleSignup() {
+            if (isCapacitorApp) {
+                await nativeGoogleSignup();
+                return;
+            }
             if (googleOverlayRendered) return; // overlay handles the click
             if (!window.google?.accounts?.id) {
                 showAlert('Google script is not loaded. Please refresh the page.', 'error');
