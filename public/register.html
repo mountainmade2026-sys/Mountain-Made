@@ -589,6 +589,7 @@
                 return;
             }
             try {
+                googleClientConfig = await api.get('/auth/google/config');
                 if (!googleClientConfig?.enabled || !googleClientConfig?.clientId) {
                     googleSignupBtn.disabled = true;
                     googleSignupBtn.style.opacity = '0.6';
