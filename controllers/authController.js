@@ -410,6 +410,7 @@ exports.googleAuth = async (req, res) => {
   try {
     const {
       id_token,
+      mode,
       role,
       full_name,
       phone,
@@ -443,6 +444,11 @@ exports.googleAuth = async (req, res) => {
 
     const normalizedEmail = String(payload.email || '').trim().toLowerCase();
     const existingUser = await User.findByEmail(normalizedEmail);
+
+    // Login mode: only allow existing users, never create a new account
+    if (!existingUser && mode === 'login') {
+      return res.status(404).json({ error: 'No account found for this Google email. Please sign up first.' });
+    }
 
     if (existingUser) {
       if (existingUser.is_blocked) {

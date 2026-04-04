@@ -322,15 +322,11 @@
                     throw new Error('Google sign-in failed to return a token.');
                 }
 
-                const result = await api.post('/auth/google', { id_token: response.credential });
+                const result = await api.post('/auth/google', { id_token: response.credential, mode: 'login' });
                 redirectByRole(result?.user);
             } catch (error) {
                 const msg = String(error?.message || error || 'Google login failed.');
-                const needsRegistration = /Phone verification is required before registration/i.test(msg);
-                showAlert(needsRegistration
-                    ? 'Google account not registered yet. Please register (OTP) then use Google sign-in.'
-                    : msg,
-                    'error');
+                showAlert(msg, 'error');
             }
         }
 
