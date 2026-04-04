@@ -1,6 +1,6 @@
 {
   "appId": "com.mountainmade.app",
-  "appName": "Mountain Made",
+  "appName": "Mount Made",
   "webDir": "public",
   "server": {
     "url": "https://mountain-made.onrender.com",

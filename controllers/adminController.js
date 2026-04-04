@@ -148,7 +148,7 @@ async function sendViaResend({ toList, subject, message }) {
     body: {
       from: String(process.env.RESEND_FROM_EMAIL || '').trim(),
       to: recipients,
-      subject: subject || 'Message from Mountain Made',
+      subject: subject || 'Message from Mount Made',
       text: message
     }
   });
@@ -2381,7 +2381,7 @@ exports.sendAdminMessage = async (req, res) => {
                 transporter.sendMail({
                   from: fromEmail,
                   to: toEmail,
-                  subject: subject || 'Message from Mountain Made',
+                  subject: subject || 'Message from Mount Made',
                   text: message
                 }),
                 EMAIL_SEND_TIMEOUT_MS,
@@ -2423,7 +2423,7 @@ exports.sendAdminMessage = async (req, res) => {
                   from: fromEmail,
                   to: fromEmail,
                   bcc: chunk,
-                  subject: subject || 'Message from Mountain Made',
+                  subject: subject || 'Message from Mount Made',
                   text: message
                 }),
                 EMAIL_SEND_TIMEOUT_MS,

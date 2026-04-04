@@ -77,7 +77,7 @@ const httpJsonRequest = ({ method, hostname, path, headers, body }) => {
 };
 
 const sendForgotPasswordEmailOtp = async (toEmail, code) => {
-  const subject = 'Your Mountain Made password reset OTP';
+  const subject = 'Your Mount Made password reset OTP';
   const text = `Your OTP is ${code}. It expires in 10 minutes.`;
 
   if (canUseResendForAuth()) {

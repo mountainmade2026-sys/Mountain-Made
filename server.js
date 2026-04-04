@@ -793,7 +793,7 @@ if (process.env.VERCEL !== '1' && require.main === module) {
     console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║                                                       ║
-║           🏔️  MOUNTAIN MADE 2.0                      ║
+║           🏔️  MOUNT MADE 2.0                      ║
 ║           Food E-Commerce Platform                    ║
 ║                                                       ║
 ║   Server running on: http://localhost:${PORT}        ║

@@ -1,4 +1,4 @@
-# APK Creation Guide for Mountain Made E-Commerce
+# APK Creation Guide for Mount Made E-Commerce
 
 ## ✅ EASIEST METHOD: PWABuilder (Recommended)
 
@@ -25,7 +25,7 @@
    - Click "Package For Stores"
    - Select "Android"
    - Choose "Google Play Store" or "APK" download
-   - Fill in package details (e.g., `com.mountainmade.app`)
+   - Fill in package details (e.g., `com.MountMade.app`)
    - Click "Generate"
    - Download the APK or upload to Google Play
 
@@ -46,7 +46,7 @@ npm install @capacitor/core @capacitor/cli
 npm install @capacitor/android
 
 # Initialize Capacitor
-npx cap init "Mountain Made" "com.mountainmade.app" --web-dir=public
+npx cap init "Mount Made" "com.MountMade.app" --web-dir=public
 
 # Add Android platform
 npx cap add android
@@ -58,8 +58,8 @@ npx cap add android
 
 ```json
 {
-  "appId": "com.mountainmade.app",
-  "appName": "Mountain Made",
+  "appId": "com.MountMade.app",
+  "appName": "Mount Made",
   "webDir": "public",
   "server": {
     "url": "https://your-backend-url.com",
@@ -91,8 +91,8 @@ npx cap open android
 
 2. **Create New Project**:
    - Select "Empty Activity"
-   - Name: "Mountain Made"
-   - Package: "com.mountainmade.app"
+   - Name: "Mount Made"
+   - Package: "com.MountMade.app"
 
 3. **Replace MainActivity content** with:
 
@@ -141,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
 
 3. **Heroku**:
    ```bash
-   heroku create mountainmade-app
+   heroku create MountMade-app
    git push heroku main
    ```
 

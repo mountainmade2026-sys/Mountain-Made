@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us - Mountain Made</title>
+    <title>About Us - Mount Made</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/mobile-enhancements.css">
     <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
@@ -147,7 +147,7 @@
                 <i class="fas fa-bars"></i>
             </button>
             <a href="/" class="navbar-brand">
-                Mountain Made
+                Mount Made
                 <span class="navbar-tagline">GOURMET GROCERIES</span>
             </a>
             <ul class="navbar-menu">
@@ -218,7 +218,7 @@
 
     <main class="container about-page-wrap">
         <section class="about-panel">
-            <h2 id="about-intro-title" class="about-panel-title">Welcome to Mountain Made</h2>
+            <h2 id="about-intro-title" class="about-panel-title">Welcome to Mount Made</h2>
             <p id="about-intro-subtitle" class="about-intro-subtitle"></p>
             <div id="about-intro-content" class="about-intro-content"></div>
         </section>
@@ -232,7 +232,7 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
-                <h3>Mountain Made</h3>
+                <h3>Mount Made</h3>
                 <p>Premium organic food products from mountain farms to your table.</p>
             </div>
 
@@ -268,7 +268,7 @@
         </div>
 
         <div class="footer-bottom">
-            <p>&copy; 2026 Mountain Made. All rights reserved.</p>
+            <p>&copy; 2026 Mount Made. All rights reserved.</p>
         </div>
     </footer>
 
@@ -332,7 +332,7 @@
                     pageTitleEl.textContent = aboutPageTitle || 'About Us';
                 }
                 if (introTitleEl) {
-                    introTitleEl.textContent = aboutIntroTitle || 'Welcome to Mountain Made';
+                    introTitleEl.textContent = aboutIntroTitle || 'Welcome to Mount Made';
                 }
                 if (missionVisionTitleEl) {
                     missionVisionTitleEl.textContent = missionVisionTitle || 'Our Mission & Vision';
@@ -347,7 +347,7 @@
                 if (!introTitleEl || !introSubtitleEl || !introContentEl) return;
 
                 if (blocks.length === 0) {
-                    introTitleEl.textContent = aboutIntroTitle || 'Welcome to Mountain Made';
+                    introTitleEl.textContent = aboutIntroTitle || 'Welcome to Mount Made';
                     introSubtitleEl.textContent = description || 'Learn about our mission and quality commitment.';
                     introContentEl.innerHTML = '<p>About content is not added yet. Please update it from Admin &gt; Site Settings.</p>';
                     gridEl.innerHTML = '<div class="about-empty">Mission and vision content will appear here after update.</div>';
@@ -357,7 +357,7 @@
                 const introBlock = blocks[0];
                 const cards = blocks.slice(1);
 
-                introTitleEl.textContent = aboutIntroTitle || introBlock.heading || 'Welcome to Mountain Made';
+                introTitleEl.textContent = aboutIntroTitle || introBlock.heading || 'Welcome to Mount Made';
                 introSubtitleEl.textContent = description || 'Learn about our mission to preserve quality and deliver with trust.';
                 introContentEl.innerHTML = renderBlock(introBlock.paragraph);
 

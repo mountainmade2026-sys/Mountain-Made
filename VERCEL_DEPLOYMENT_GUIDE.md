@@ -1,4 +1,4 @@
-# 🚀 Deploy Mountain Made to Vercel
+# 🚀 Deploy Mount Made to Vercel
 
 ## Prerequisites
 - Vercel account (free): https://vercel.com/signup
@@ -175,8 +175,8 @@ Visit your Vercel URL:
 Edit `public/manifest.json`:
 ```json
 {
-  "name": "Mountain Made E-Commerce",
-  "short_name": "Mountain Made",
+  "name": "Mount Made E-Commerce",
+  "short_name": "Mount Made",
   "start_url": "https://your-app.vercel.app/",
   ...
 }
@@ -190,7 +190,7 @@ Edit `public/manifest.json`:
 4. Click "Package For Stores" > Android
 5. Fill in:
    - Package ID: `com.mountainmade.app`
-   - App name: `Mountain Made`
+   - App name: `Mount Made`
 6. Click "Generate"
 7. Download your APK!
 

@@ -1,4 +1,4 @@
-# Mountain Made 2.0 - Professional Food E-Commerce Platform
+# Mount Made 2.0 - Professional Food E-Commerce Platform
 
 A full-stack, professional food e-commerce platform built with Node.js, Express, PostgreSQL, and vanilla JavaScript. Features include customer shopping, wholesale accounts with approval workflow, and complete admin management.
 
@@ -102,18 +102,18 @@ NODE_ENV=development
 JWT_SECRET=your_very_secure_random_jwt_secret_key_here
 
 # Admin Credentials
-ADMIN_EMAIL=admin@mountainmade.com
+ADMIN_EMAIL=admin@MountMade.com
 ADMIN_PASSWORD=Admin@123
 
 # Super Admin Credentials
-SUPER_ADMIN_EMAIL=developer@mountainmade.com
+SUPER_ADMIN_EMAIL=developer@MountMade.com
 SUPER_ADMIN_PASSWORD=SuperAdmin@123
 
 # Optional: Auto-create test accounts on startup (useful for Render testing)
 ENABLE_TEST_ACCOUNTS=false
-TEST_CUSTOMER_EMAIL=test.customer@mountainmade.local
+TEST_CUSTOMER_EMAIL=test.customer@MountMade.local
 TEST_CUSTOMER_PASSWORD=change_me
-TEST_WHOLESALE_EMAIL=test.wholesale@mountainmade.local
+TEST_WHOLESALE_EMAIL=test.wholesale@MountMade.local
 TEST_WHOLESALE_PASSWORD=change_me
 ```
 
@@ -141,18 +141,18 @@ You should see:
 ✓ Connected to PostgreSQL database
 Initializing database schema...
 ✓ Database schema initialized successfully
-✓ Admin user created: admin@mountainmade.com
+✓ Admin user created: admin@MountMade.com
 ✓ Application initialized successfully
 
 ╔═══════════════════════════════════════════════════════╗
 ║                                                       ║
-║           🏔️  MOUNTAIN MADE 2.0                      ║
+║           🏔️  Mount Made 2.0                      ║
 ║           Food E-Commerce Platform                    ║
 ║                                                       ║
 ║   Server running on: http://localhost:3000           ║
 ║                                                       ║
 ║   Admin Panel: http://localhost:3000/admin           ║
-║   Admin Email: admin@mountainmade.com                ║
+║   Admin Email: admin@MountMade.com                ║
 ║                                                       ║
 ╚═══════════════════════════════════════════════════════╝
 ```
@@ -164,7 +164,7 @@ Open your browser and navigate to:
 **Main Website**: http://localhost:3000
 
 **Admin Panel**: http://localhost:3000/admin
-- Email: admin@mountainmade.com
+- Email: admin@MountMade.com
 - Password: Admin@123 (or your custom password from .env)
 
 ## 📱 User Accounts
@@ -186,7 +186,7 @@ Then you can log in normally from `/login`.
 **Important**: turn it off after testing by setting `ENABLE_TEST_ACCOUNTS=false` (or removing the vars) and redeploying.
 
 ### Admin Account
-- **Email**: admin@mountainmade.com
+- **Email**: admin@MountMade.com
 - **Password**: Admin@123 (default)
 - **Features**: Full system access, user management, product management
 
@@ -224,7 +224,7 @@ Create a local `.env` on your computer (not on Render) with:
 BACKUP_SYNC_BASE_URL=https://your-render-service.onrender.com
 BACKUP_SYNC_EMAIL=your_admin_or_super_admin_email
 BACKUP_SYNC_PASSWORD=your_admin_or_super_admin_password
-BACKUP_LOCAL_DIR=D:\Backups\MountainMade
+BACKUP_LOCAL_DIR=D:\Backups\MountMade
 
 BACKUP_SYNC_INTERVAL_MINUTES=30
 BACKUP_SYNC_MAX_PER_RUN=3
@@ -353,7 +353,7 @@ To add sample products for testing:
 ## 🛒 Testing Workflow
 
 1. **Admin Setup**
-   - Login as admin (admin@mountainmade.com / Admin@123)
+   - Login as admin (admin@MountMade.com / Admin@123)
    - Add product categories (if needed)
    - Add sample products with images and prices
 
@@ -492,4 +492,4 @@ This project is created for educational and commercial purposes.
 
 ## 🎉 Enjoy!
 
-Your Mountain Made 2.0 e-commerce platform is now ready to use. Happy selling! 🏔️
+Your Mount Made 2.0 e-commerce platform is now ready to use. Happy selling! 🏔️

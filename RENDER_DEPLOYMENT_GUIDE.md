@@ -1,4 +1,4 @@
-# 🚀 Deploy Mountain Made to Render
+# 🚀 Deploy Mount Made to Render
 
 ## Why Render is Better:
 ✅ **FREE PostgreSQL database included** (no Neon needed!)

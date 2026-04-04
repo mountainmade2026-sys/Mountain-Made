@@ -732,7 +732,7 @@
         };
         let checkoutGpaySettings = {
             enabled: false,
-            payeeName: 'Mountain Made',
+            payeeName: 'Mount Made',
             upiId: '',
             phoneNumber: '',
             bankName: '',
@@ -1203,17 +1203,17 @@
         function loadBillingProfile() {
             try {
                 const raw = localStorage.getItem(BILLING_STORAGE_KEY);
-                if (!raw) return { preferred: 'upi', upi: 'mountainmade@upi', phone: '', qr: '' };
+                if (!raw) return { preferred: 'upi', upi: 'mountmade@upi', phone: '', qr: '' };
                 const parsed = JSON.parse(raw);
                 return {
                     preferred: parsed.preferred || 'upi',
-                    upi: parsed.upi || 'mountainmade@upi',
+                    upi: parsed.upi || 'mountmade@upi',
                     phone: parsed.phone || '',
                     qr: parsed.qr || ''
                 };
             } catch (e) {
                 console.warn('Billing profile parse error', e);
-                return { preferred: 'upi', upi: 'mountainmade@upi', phone: '', qr: '' };
+                return { preferred: 'upi', upi: 'mountmade@upi', phone: '', qr: '' };
             }
         }
 
@@ -1247,7 +1247,7 @@
             const upiId = String(checkoutGpaySettings.upiId || '').trim();
             if (!upiId) return null;
 
-            const payeeName = String(checkoutGpaySettings.payeeName || 'Mountain Made').trim();
+            const payeeName = String(checkoutGpaySettings.payeeName || 'Mount Made').trim();
             const finalAmount = Number(amount || 0);
             if (!Number.isFinite(finalAmount) || finalAmount <= 0) return null;
 
@@ -1489,7 +1489,7 @@
 
             if (hint) {
                 hint.textContent = checkoutGpaySettings.enabled
-                    ? `Payee: ${checkoutGpaySettings.payeeName || 'Mountain Made'}`
+                    ? `Payee: ${checkoutGpaySettings.payeeName || 'Mount Made'}`
                     : 'Google Pay is currently disabled by admin.';
             }
         }
@@ -1631,7 +1631,7 @@
                 checkoutSettings.fastDeliveryCharge = charge;
 
                 checkoutGpaySettings.enabled = String(settings.gpay_enabled || 'false').toLowerCase() === 'true';
-                checkoutGpaySettings.payeeName = String(settings.gpay_payee_name || 'Mountain Made').trim();
+                checkoutGpaySettings.payeeName = String(settings.gpay_payee_name || 'Mount Made').trim();
                 checkoutGpaySettings.upiId = String(settings.gpay_upi_id || '').trim();
                 checkoutGpaySettings.phoneNumber = String(settings.gpay_phone_number || '').trim();
                 checkoutGpaySettings.bankName = String(settings.gpay_bank_name || '').trim();
@@ -1870,7 +1870,7 @@
                             key: rpKeyId,
                             amount: rpAmount,
                             currency: rpCurrency,
-                            name: 'Mountain Made',
+                            name: 'Mount Made',
                             description: 'Checkout Payment',
                             order_id: rpOrderId,
                             handler: async function (response) {
