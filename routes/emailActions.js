@@ -2,6 +2,44 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const nodemailer = require('nodemailer');
+
+// ── Test endpoint: hit /api/email-actions/test in a browser to verify SMTP ──
+router.get('/test', async (req, res) => {
+  const host = String(process.env.SMTP_HOST || '').trim();
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = String(process.env.SMTP_USER || '').trim();
+  const pass = String(process.env.SMTP_PASS || '').replace(/\s/g, '');
+  const to   = String(process.env.ADMIN_NOTIFICATION_EMAIL || user).trim();
+  const base = String(process.env.APP_BASE_URL || '').trim();
+
+  const config = { host, port, userSet: !!user, passLen: pass.length, to, base };
+
+  if (!host || !user || !pass) {
+    return res.status(503).json({ ok: false, error: 'SMTP env vars missing', config });
+  }
+
+  try {
+    const t = nodemailer.createTransport({
+      host, port,
+      secure: port === 465,
+      auth: { user, pass }
+    });
+
+    await t.verify();
+
+    const info = await t.sendMail({
+      from: `Mount Made <${user}>`,
+      to,
+      subject: 'Mount Made - Live Server Email Test ' + new Date().toISOString(),
+      html: `<h2>Email is working ✅</h2><p>Sent from live server at <b>${base}</b></p><p>${new Date().toISOString()}</p>`
+    });
+
+    return res.json({ ok: true, messageId: info.messageId, response: info.response, sentTo: to, config });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message, config });
+  }
+});
 
 // ── HTML response helpers ────────────────────────────────────────────────
 function page(icon, color, title, detail) {
