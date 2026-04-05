@@ -1133,14 +1133,26 @@ exports.getStockReports = async (req, res) => {
           o.order_number,
           o.created_at     AS order_date,
           o.status,
+          o.delivery_speed,
+          o.delivery_charge,
           u.full_name      AS customer_name,
           u.email          AS customer_email,
           oi.quantity,
           oi.price,
-          oi.subtotal
+          oi.subtotal,
+          -- pro-rate delivery charge: this item's share of the order's delivery fee
+          CASE
+            WHEN COALESCE(o.delivery_charge, 0) > 0
+            THEN ROUND(
+              (oi.quantity::DECIMAL / NULLIF(SUM(oi2.quantity) OVER (PARTITION BY o.id), 0))
+              * o.delivery_charge, 2
+            )
+            ELSE 0
+          END AS item_delivery_charge
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.id
         LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi2 ON oi2.order_id = o.id
         WHERE oi.product_id = $1
 
         UNION ALL
@@ -1152,11 +1164,14 @@ exports.getStockReports = async (req, res) => {
           COALESCE(r.return_number, 'RTN-' || r.id::text) AS order_number,
           r.processed_at                                   AS order_date,
           r.status,
+          NULL                                             AS delivery_speed,
+          0                                               AS delivery_charge,
           u.full_name  AS customer_name,
           u.email      AS customer_email,
           ri.quantity,
           ri.price,
-          (ri.quantity * ri.price)::DECIMAL(10,2) AS subtotal
+          (ri.quantity * ri.price)::DECIMAL(10,2)          AS subtotal,
+          0                                               AS item_delivery_charge
         FROM return_items ri
         JOIN returns r ON ri.return_id = r.id
         LEFT JOIN users u ON r.user_id = u.id
@@ -1192,6 +1207,8 @@ exports.getStockReports = async (req, res) => {
           order_number: t.order_number,
           order_date: t.order_date,
           status: t.status,
+          delivery_speed: t.delivery_speed,
+          item_delivery_charge: parseFloat(t.item_delivery_charge) || 0,
           customer_name: t.customer_name,
           customer_email: t.customer_email,
           quantity: parseInt(t.quantity),

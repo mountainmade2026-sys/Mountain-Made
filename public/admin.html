@@ -5478,6 +5478,7 @@
                                     <th>Stock Before</th>
                                     <th>Stock After</th>
                                     <th>Price</th>
+                                    <th>Delivery</th>
                                     <th>Total</th>
                                     <th>Status</th>
                                 </tr>
@@ -5498,7 +5499,7 @@
                     if (!rows || rows.length === 0) {
                         rowsTbody.innerHTML = `
                             <tr>
-                                <td colspan="9" style="padding: 1rem; color: var(--text-muted);">No matching orders found</td>
+                                <td colspan="10" style="padding: 1rem; color: var(--text-muted);">No matching orders found</td>
                             </tr>
                         `;
                         return;
@@ -5515,6 +5516,14 @@
                         const statusBadge = isReturn
                             ? `<span class="badge badge-success">refunded</span>`
                             : `<span class="badge badge-${t.status === 'delivered' ? 'success' : t.status === 'cancelled' ? 'danger' : 'warning'}">${t.status}</span>`;
+                        const deliveryCharge = parseFloat(t.item_delivery_charge) || 0;
+                        const isFast = t.delivery_speed === 'fast';
+                        const deliveryCell = isReturn
+                            ? `<span style="color:var(--text-muted);">—</span>`
+                            : deliveryCharge > 0
+                                ? `<span style="color:var(--warning);font-weight:600;">${formatCurrency(deliveryCharge)}${isFast ? ' <i class="fas fa-bolt" title="Fast Delivery" style="font-size:0.75rem;"></i>' : ''}</span>`
+                                : `<span style="color:var(--text-muted);">—</span>`;
+                        const totalWithDelivery = isReturn ? parseFloat(t.subtotal) : parseFloat(t.subtotal) + deliveryCharge;
                         rowsHtml += `
                             <tr ${rowBg}>
                                 <td>${formatDate(t.order_date)}</td>
@@ -5527,7 +5536,8 @@
                                 <td>${stockBefore}</td>
                                 <td>${stockAfter}</td>
                                 <td>${formatCurrency(t.price)}</td>
-                                <td><strong>${formatCurrency(t.subtotal)}</strong></td>
+                                <td>${deliveryCell}</td>
+                                <td><strong>${formatCurrency(totalWithDelivery)}</strong></td>
                                 <td>${statusBadge}</td>
                             </tr>
                         `;
