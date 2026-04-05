@@ -207,30 +207,30 @@ router.get('/order/:id/:action', async (req, res) => {
       const deliveredUrl = `${baseUrl}/api/email-actions/order/${order.id}/deliver?token=${deliveredToken}`;
       const deliveredBtn = `<a href="${deliveredUrl}" style="display:inline-block;padding:14px 32px;background:#28a745;color:#fff;text-decoration:none;border-radius:6px;font-size:15px;font-weight:bold;margin-top:8px;">&#128666; Mark as Delivered</a>`;
 
-      Promise.resolve().then(() => sendActionResultEmail({
+      await sendActionResultEmail({
         subject: `✅ Order Confirmed: ${order.order_number}`,
         icon: '✅', color: '#28a745',
         title: 'Order Confirmed',
         detail: `Order <strong>${order.order_number}</strong> has been confirmed and is now being processed. Click below when the order is delivered:`,
         actionButtonHtml: deliveredBtn
-      })).catch(e => console.error('[EMAIL] confirm result email error:', e));
+      });
       return res.send(page('✅', '#28a745', 'Order Confirmed!', `Order <strong>${order.order_number}</strong> has been confirmed and moved to Processing.`));
     } else if (action === 'deliver') {
-      Promise.resolve().then(() => sendActionResultEmail({
+      await sendActionResultEmail({
         subject: `🚚 Order Delivered: ${order.order_number}`,
         icon: '🚚', color: '#17a2b8',
         title: 'Order Delivered',
         detail: `Order <strong>${order.order_number}</strong> has been marked as delivered successfully.`
-      })).catch(e => console.error('[EMAIL] deliver result email error:', e));
+      });
       return res.send(page('🚚', '#28a745', 'Order Delivered!', `Order <strong>${order.order_number}</strong> has been marked as delivered successfully.`));
     } else {
       // Decline — just notify, no further button
-      Promise.resolve().then(() => sendActionResultEmail({
+      await sendActionResultEmail({
         subject: `❌ Order Declined: ${order.order_number}`,
         icon: '❌', color: '#dc3545',
         title: 'Order Declined',
         detail: `Order <strong>${order.order_number}</strong> has been declined and cancelled. Stock has been restocked.`
-      })).catch(e => console.error('[EMAIL] decline result email error:', e));
+      });
       return res.send(page('❌', '#dc3545', 'Order Declined', `Order <strong>${order.order_number}</strong> has been declined and cancelled.`));
     }
   } catch (err) {
