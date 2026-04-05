@@ -873,10 +873,10 @@
                                    style="width:64px; padding:0.25rem 0.35rem; font-size:0.85rem;">
                         </div>
                         <div class="product-action-row">
-                            <button class="btn btn-primary btn-sm add-cart-cta" onclick="addToCart(${p.id})" ${p.stock_quantity === 0 ? 'disabled' : ''}>
-                                <i class="fas fa-cart-plus"></i> ${p.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                            <button class="btn btn-primary btn-sm add-cart-cta" onclick="addToCart(${p.id})" ${(p.stock_quantity || 0) <= 0 ? 'disabled' : ''}>
+                                <i class="fas fa-cart-plus"></i> ${(p.stock_quantity || 0) <= 0 ? 'Out of Stock' : 'Add to Cart'}
                             </button>
-                            <button class="btn btn-success btn-sm" onclick="buyNow(${p.id})" ${p.stock_quantity === 0 ? 'disabled' : ''}>
+                            <button class="btn btn-success btn-sm" onclick="buyNow(${p.id})" ${(p.stock_quantity || 0) <= 0 ? 'disabled' : ''}>
                                 <i class="fas fa-credit-card"></i> Buy Now
                             </button>
                         </div>

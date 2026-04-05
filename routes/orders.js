@@ -221,8 +221,11 @@ router.post('/quick-buy', async (req, res) => {
     const retailPrice = product.discount_price != null ? product.discount_price : product.price;
     
     // Check stock
+    if ((product.stock_quantity || 0) <= 0) {
+      return res.status(400).json({ error: `"${product.name}" is out of stock.` });
+    }
     if (product.stock_quantity < quantity) {
-      return res.status(400).json({ error: 'Insufficient stock.' });
+      return res.status(400).json({ error: `Only ${product.stock_quantity} item(s) of "${product.name}" are available.` });
     }
 
     // Determine price based on user type

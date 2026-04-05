@@ -56,8 +56,11 @@ exports.addToCart = async (req, res) => {
       return res.status(404).json({ error: 'Product not found.' });
     }
 
+    if ((product.stock_quantity || 0) <= 0) {
+      return res.status(400).json({ error: 'This product is out of stock.' });
+    }
     if (product.stock_quantity < quantity) {
-      return res.status(400).json({ error: 'Insufficient stock available.' });
+      return res.status(400).json({ error: `Only ${product.stock_quantity} item(s) available in stock.` });
     }
 
     // Check if item already in cart
@@ -71,7 +74,7 @@ exports.addToCart = async (req, res) => {
       const newQuantity = existingItem.rows[0].quantity + quantity;
       
       if (product.stock_quantity < newQuantity) {
-        return res.status(400).json({ error: 'Insufficient stock available.' });
+        return res.status(400).json({ error: `Only ${product.stock_quantity} item(s) available in stock.` });
       }
 
       await db.query(

@@ -1101,7 +1101,13 @@
                                         <i class="fas fa-bolt"></i> Buy Now
                                     </button>
                                 </div>
-                            ` : ''}
+                            ` : `
+                                <div class="product-actions" style="margin-top:1rem;">
+                                    <button class="btn btn-primary" disabled style="opacity:0.55;cursor:not-allowed;width:100%;">
+                                        <i class="fas fa-ban"></i> Out of Stock
+                                    </button>
+                                </div>
+                            `}
                         </div>
                         
                         <div class="delivery-info">
@@ -1381,12 +1387,15 @@
                 setTimeout(() => window.location.href = '/login', 1500);
                 return;
             }
-
+            if ((product.stock_quantity || 0) <= 0) {
+                showAlert('This product is out of stock.', 'error');
+                return;
+            }
             try {
                 await cart.add(product.id, selectedQuantity);
             } catch (error) {
                 console.error('Add to cart error:', error);
-                showAlert('Failed to add to cart', 'error');
+                showAlert(error.message || 'Failed to add to cart', 'error');
             }
         }
 
@@ -1394,6 +1403,10 @@
             if (!auth.isAuthenticated()) {
                 showAlert('Please login to buy products', 'error');
                 setTimeout(() => window.location.href = '/login', 1500);
+                return;
+            }
+            if ((product.stock_quantity || 0) <= 0) {
+                showAlert('This product is out of stock.', 'error');
                 return;
             }
 
