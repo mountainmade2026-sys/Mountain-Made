@@ -4,6 +4,40 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const nodemailer = require('nodemailer');
 
+// ── Send a result email back to admin after they take action ─────────────
+async function sendActionResultEmail({ subject, icon, color, title, detail }) {
+  const host  = String(process.env.SMTP_HOST || '').trim();
+  const port  = parseInt(process.env.SMTP_PORT || '465', 10);
+  const user  = String(process.env.SMTP_USER || '').trim();
+  const pass  = String(process.env.SMTP_PASS || '').replace(/\s/g, '');
+  const to    = String(process.env.ADMIN_NOTIFICATION_EMAIL || user).trim();
+  const from  = String(process.env.SMTP_FROM_EMAIL || user).trim();
+
+  if (!host || !user || !pass || !to) return;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:30px;background:#f0f0f0;font-family:Arial,sans-serif;">
+<div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+  <div style="background:${color};padding:28px;text-align:center;">
+    <div style="font-size:52px;line-height:1;margin-bottom:10px;">${icon}</div>
+    <h2 style="color:#fff;margin:0;font-size:22px;">${title}</h2>
+  </div>
+  <div style="padding:24px;text-align:center;">
+    <p style="color:#555;font-size:15px;margin:0 0 8px;">${detail}</p>
+    <p style="color:#aaa;font-size:12px;margin-top:20px;">Mount Made &mdash; ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
+  </div>
+</div>
+</body></html>`;
+
+  try {
+    const t = nodemailer.createTransport({ host, port, secure: true, auth: { user, pass }, connectionTimeout: 15000, socketTimeout: 20000 });
+    await t.sendMail({ from: `Mount Made <${from}>`, to, subject, html });
+  } catch (err) {
+    console.error('[EMAIL] Action result email failed:', err.message);
+  }
+}
+
 // ── Test endpoint: hit /api/email-actions/test in a browser to verify SMTP ──
 router.get('/test', async (req, res) => {
   const host = String(process.env.SMTP_HOST || '').trim();
@@ -158,9 +192,23 @@ router.get('/order/:id/:action', async (req, res) => {
     }
 
     if (action === 'confirm') {
-      return res.send(page('✅', '#28a745', 'Order Confirmed!', `Order <strong>${order.order_number}</strong> has been confirmed and moved to Processing. The customer will be notified.`));
+      // Send result email back to admin inbox
+      setImmediate(() => sendActionResultEmail({
+        subject: `✅ Order Confirmed: ${order.order_number}`,
+        icon: '✅', color: '#28a745',
+        title: 'Order Confirmed',
+        detail: `Order <strong>${order.order_number}</strong> has been confirmed and is now being processed.`
+      }));
+      return res.send(page('✅', '#28a745', 'Order Confirmed!', `Order <strong>${order.order_number}</strong> has been confirmed and moved to Processing.`));
     } else {
-      return res.send(page('❌', '#dc3545', 'Order Declined', `Order <strong>${order.order_number}</strong> has been declined and cancelled. Stock has been restocked automatically.`));
+      // Send result email back to admin inbox
+      setImmediate(() => sendActionResultEmail({
+        subject: `❌ Order Declined: ${order.order_number}`,
+        icon: '❌', color: '#dc3545',
+        title: 'Order Declined',
+        detail: `Order <strong>${order.order_number}</strong> has been declined and cancelled. Stock has been restocked.`
+      }));
+      return res.send(page('❌', '#dc3545', 'Order Declined', `Order <strong>${order.order_number}</strong> has been declined and cancelled.`));
     }
   } catch (err) {
     console.error('Email action order error:', err);
@@ -209,8 +257,20 @@ router.get('/return/:id/:action', async (req, res) => {
     );
 
     if (action === 'approve') {
-      return res.send(page('✅', '#28a745', 'Return Approved!', `Return request <strong>${returnId}</strong> has been approved. The customer will see the next steps in their account.`));
+      setImmediate(() => sendActionResultEmail({
+        subject: `✅ Return Approved: ${returnId}`,
+        icon: '✅', color: '#28a745',
+        title: 'Return Approved',
+        detail: `Return request <strong>${returnId}</strong> has been approved successfully.`
+      }));
+      return res.send(page('✅', '#28a745', 'Return Approved!', `Return request <strong>${returnId}</strong> has been approved.`));
     } else {
+      setImmediate(() => sendActionResultEmail({
+        subject: `❌ Return Declined: ${returnId}`,
+        icon: '❌', color: '#dc3545',
+        title: 'Return Declined',
+        detail: `Return request <strong>${returnId}</strong> has been declined and rejected.`
+      }));
       return res.send(page('❌', '#dc3545', 'Return Declined', `Return request <strong>${returnId}</strong> has been declined and rejected.`));
     }
   } catch (err) {
