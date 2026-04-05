@@ -9,7 +9,14 @@ const jwt = require('jsonwebtoken');
 const { minify } = require('terser');
 const { minify: minifyHtml } = require('html-minifier-terser');
 const JavaScriptObfuscator = require('javascript-obfuscator');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+// ── Startup validation ───────────────────────────────────────────────────
+if (!process.env.JWT_SECRET || String(process.env.JWT_SECRET).trim().length < 16) {
+  console.error('FATAL: JWT_SECRET is missing or too short (min 16 chars). Server will not start.');
+  process.exit(1);
+}
 
 const database = require('./config/database');
 const { initializeDatabase } = database;
@@ -124,9 +131,40 @@ const upload = multer({
     }
 });
 
+// ── Rate limiters ────────────────────────────────────────────────────────
+// Strict: login, register, OTP — brute force targets
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again in 15 minutes.' }
+});
+
+// General API limit — prevents scraping / DoS
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please slow down.' }
+});
+
 // Middleware
+const allowedOrigins = [
+  'https://mountmade.in',
+  'https://www.mountmade.in',
+  'https://mountain-made.onrender.com',
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://localhost:5173'] : [])
+];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Capacitor)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS: origin not allowed'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -167,10 +205,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 app.use(compression());
+// Apply general rate limit to all API routes
+app.use('/api/', apiLimiter);
 
 // Page-level access guard: keep wholesale and public experiences separated.
 // - Approved wholesale users are redirected away from public browsing pages.
@@ -428,7 +468,7 @@ app.use((error, req, res, next) => {
 });
 
 // API Routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/cart', require('./routes/cart'));
 app.use('/api/orders', require('./routes/orders'));

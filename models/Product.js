@@ -3,6 +3,9 @@ const db = require('../config/database');
 class Product {
   static async ensureSchemaCompatibility() {
     if (this._schemaReady) return;
+    // Prevent parallel runs — cache the promise so concurrent calls wait on the same one
+    if (this._schemaPromise) return this._schemaPromise;
+    this._schemaPromise = (async () => {
     try {
       await db.pool.query(`
         CREATE TABLE IF NOT EXISTS products (
@@ -75,6 +78,8 @@ class Product {
       console.warn('ensureSchemaCompatibility warning:', err.message || err);
     }
     this._schemaReady = true;
+    })();
+    return this._schemaPromise;
   }
 
   static async ensureDiscountColumns() {

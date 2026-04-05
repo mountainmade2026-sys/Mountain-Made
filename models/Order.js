@@ -157,11 +157,14 @@ class Order {
           item.subtotal
         ]);
 
-        // Update product stock
-        await client.query(
-          'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2',
+        // Lock product row and check stock before decrementing (prevents race condition)
+        const stockResult = await client.query(
+          'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2 AND stock_quantity >= $1 RETURNING id, name, stock_quantity',
           [item.quantity, item.product_id]
         );
+        if (!stockResult.rows.length) {
+          throw new Error(`Insufficient stock for "${item.product_name}". Please update your cart and try again.`);
+        }
       }
 
       // Clear user's cart
