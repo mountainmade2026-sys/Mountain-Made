@@ -442,6 +442,7 @@ app.use('/api/restore', require('./routes/restore'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/voice', require('./routes/voice'));
 app.use('/api/email-actions', require('./routes/emailActions'));
+app.use('/api/whatsapp', require('./routes/whatsapp'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

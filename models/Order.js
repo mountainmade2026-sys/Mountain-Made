@@ -238,7 +238,7 @@ class Order {
 
   static async findAll(filters = {}) {
     let query = `
-      SELECT o.*, u.full_name, u.email,
+      SELECT o.*, u.full_name, u.email, u.phone,
              COALESCE(
                json_agg(
                  json_build_object(

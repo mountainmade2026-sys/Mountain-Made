@@ -3,6 +3,10 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const nodemailer = require('nodemailer');
+const {
+  notifyOrderConfirmed, notifyOrderDeclined, notifyOrderDelivered,
+  notifyReturnApproved, notifyReturnRejected
+} = require('../utils/whatsappService');
 
 // ── Send a result email back to admin after they take action ─────────────
 async function sendActionResultEmail({ subject, icon, color, title, detail, actionButtonHtml }) {
@@ -144,7 +148,11 @@ router.get('/order/:id/:action', async (req, res) => {
 
   try {
     const checkResult = await db.query(
-      'SELECT id, status, order_number FROM orders WHERE id = $1',
+      `SELECT o.id, o.status, o.order_number,
+              u.full_name AS customer_name, u.phone AS customer_phone
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.id = $1`,
       [id]
     );
 
@@ -214,6 +222,7 @@ router.get('/order/:id/:action', async (req, res) => {
         detail: `Order <strong>${order.order_number}</strong> has been confirmed and is now being processed. Click below when the order is delivered:`,
         actionButtonHtml: deliveredBtn
       });
+      notifyOrderConfirmed(order.customer_phone, order.customer_name || 'Customer', order.order_number);
       return res.send(page('✅', '#28a745', 'Order Confirmed!', `Order <strong>${order.order_number}</strong> has been confirmed and moved to Processing.`));
     } else if (action === 'deliver') {
       await sendActionResultEmail({
@@ -222,6 +231,7 @@ router.get('/order/:id/:action', async (req, res) => {
         title: 'Order Delivered',
         detail: `Order <strong>${order.order_number}</strong> has been marked as delivered successfully.`
       });
+      notifyOrderDelivered(order.customer_phone, order.customer_name || 'Customer', order.order_number);
       return res.send(page('🚚', '#28a745', 'Order Delivered!', `Order <strong>${order.order_number}</strong> has been marked as delivered successfully.`));
     } else {
       // Decline — just notify, no further button
@@ -231,6 +241,7 @@ router.get('/order/:id/:action', async (req, res) => {
         title: 'Order Declined',
         detail: `Order <strong>${order.order_number}</strong> has been declined and cancelled. Stock has been restocked.`
       });
+      notifyOrderDeclined(order.customer_phone, order.customer_name || 'Customer', order.order_number);
       return res.send(page('❌', '#dc3545', 'Order Declined', `Order <strong>${order.order_number}</strong> has been declined and cancelled.`));
     }
   } catch (err) {
@@ -257,7 +268,11 @@ router.get('/return/:id/:action', async (req, res) => {
 
   try {
     const checkResult = await db.query(
-      'SELECT id, status, return_number FROM returns WHERE id = $1',
+      `SELECT r.id, r.status, r.return_number,
+              u.full_name AS customer_name, u.phone AS customer_phone
+       FROM returns r
+       LEFT JOIN users u ON r.user_id = u.id
+       WHERE r.id = $1`,
       [id]
     );
 
@@ -286,6 +301,7 @@ router.get('/return/:id/:action', async (req, res) => {
         title: 'Return Approved',
         detail: `Return request <strong>${returnId}</strong> has been approved successfully.`
       })).catch(e => console.error('[EMAIL] approve result email error:', e));
+      notifyReturnApproved(ret.customer_phone, ret.customer_name || 'Customer', returnId);
       return res.send(page('✅', '#28a745', 'Return Approved!', `Return request <strong>${returnId}</strong> has been approved.`));
     } else {
       Promise.resolve().then(() => sendActionResultEmail({
@@ -294,6 +310,7 @@ router.get('/return/:id/:action', async (req, res) => {
         title: 'Return Declined',
         detail: `Return request <strong>${returnId}</strong> has been declined and rejected.`
       })).catch(e => console.error('[EMAIL] decline result email error:', e));
+      notifyReturnRejected(ret.customer_phone, ret.customer_name || 'Customer', returnId);
       return res.send(page('❌', '#dc3545', 'Return Declined', `Return request <strong>${returnId}</strong> has been declined and rejected.`));
     }
   } catch (err) {

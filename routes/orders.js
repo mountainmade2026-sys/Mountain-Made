@@ -6,6 +6,7 @@ const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { blockAdminCommerce } = require('../middleware/commerceAccess');
 const { sendOrderNotificationToAdmin } = require('../utils/emailService');
+const { notifyOrderPlaced } = require('../utils/whatsappService');
 
 // All order routes require authentication
 router.use(authenticateToken);
@@ -43,6 +44,7 @@ router.post('/', async (req, res) => {
         const items = itemsResult.rows || [];
         await sendOrderNotificationToAdmin(order, customer, items);
         console.log(`[EMAIL] Order notification sent for order ${order.order_number}`);
+        await notifyOrderPlaced(customer.phone, customer.full_name || 'Customer', order.order_number, order.total_amount);
       } catch (emailErr) {
         console.error('[EMAIL] Order notification failed:', emailErr.message, emailErr.stack);
       }

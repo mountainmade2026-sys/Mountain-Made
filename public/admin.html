@@ -7974,11 +7974,19 @@
                         </button>
                        </div>`;
 
+                const waPhone = o.phone || '';
+                const waName  = (o.full_name || 'Customer').split(' ')[0];
+                const waMsg   = `Hello ${waName}! Regarding your Mount Made order ${o.order_number || '#' + o.id} — `;
+                const waLink  = waPhone ? `https://wa.me/${waPhone.replace(/\D/g,'').replace(/^0/, '91').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(waMsg)}` : '';
+                const waBtn   = waPhone
+                    ? `<button class="action-btn" style="background:#25d366;color:#fff;margin-top:4px;" onclick="openWhatsApp('${o.id}', '${waPhone}', \`${waMsg.replace(/`/g,"'")}\`)" title="Send WhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</button>`
+                    : '';
+
                 html += `
                     <tr>
                         <td>#${o.id}</td>
                         <td>${o.order_number || '-'}</td>
-                        <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small></td>
+                        <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small>${waBtn ? '<br>' + waBtn : ''}</td>
                         <td style="font-size:0.85rem;">${itemsHtml}</td>
                         <td>${formatCurrency(o.total_amount)}</td>
                         <td>${deliveryLabel}</td>
@@ -8090,6 +8098,24 @@
                 console.error('Update order status error:', error);
                 const errMsg = error?.error || 'Failed to update order status';
                 showAlert(errMsg, 'error');
+            }
+        };
+
+        // WhatsApp: send message to customer from admin panel
+        window.openWhatsApp = async function(orderId, phone, prefillText) {
+            const customMsg = window.prompt('Edit WhatsApp message before sending:', prefillText);
+            if (customMsg === null) return;
+            try {
+                const resp = await api.post('/whatsapp/send', { phone, message: customMsg });
+                if (resp.sent) {
+                    showAlert('WhatsApp message sent! ✅', 'success');
+                } else if (resp.waLink) {
+                    window.open(resp.waLink, '_blank');
+                }
+            } catch (err) {
+                const digits = String(phone).replace(/\D/g,'').replace(/^0/,'91');
+                const num = digits.length === 10 ? '91' + digits : digits;
+                window.open(`https://wa.me/${num}?text=${encodeURIComponent(customMsg)}`, '_blank');
             }
         };
 
