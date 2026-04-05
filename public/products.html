@@ -156,6 +156,14 @@
             display: none;
         }
 
+        .products-search-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 0;
+        }
+
         .filter-sidebar {
             width: 300px;
             flex-shrink: 0;
@@ -493,9 +501,14 @@
             .products-filter-toggle {
                 display: inline-flex;
                 align-items: center;
-                justify-content: center;
+                gap: 0.4rem;
+                flex-shrink: 0;
+                white-space: nowrap;
+                padding: 0.5rem 1rem;
+            }
+
+            .products-search-row {
                 width: 100%;
-                margin: 0 0 1rem 0;
             }
         }
 
@@ -589,12 +602,6 @@
         <!-- Overlay for mobile filter drawer -->
         <div id="filter-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:850;"></div>
 
-        <!-- Mobile Filters Toggle Button -->
-        <button id="products-filter-toggle" class="btn btn-secondary products-filter-toggle">
-            <i class="fas fa-filter"></i>
-            <span>Filters</span>
-        </button>
-
         <!-- Filter Sidebar -->
         <aside class="filter-sidebar" id="filter-sidebar">
             <div class="filter-card">
@@ -652,7 +659,13 @@
         <main class="products-main">
             <div class="products-header">
                 <h2 style="margin: 0;">Our Products</h2>
-                <input type="text" id="search-input" placeholder="Search products..." class="form-input search-bar">
+                <div class="products-search-row">
+                    <button id="products-filter-toggle" class="btn btn-secondary products-filter-toggle">
+                        <i class="fas fa-filter"></i>
+                        <span>Filters</span>
+                    </button>
+                    <input type="text" id="search-input" placeholder="Search products..." class="form-input search-bar" style="flex:1;min-width:0;">
+                </div>
             </div>
             <div id="products-count" class="products-count"></div>
             <div id="products-grid" class="grid grid-4" style="margin-top: 1.5rem;">
