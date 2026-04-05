@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/ios": "^8.3.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
@@ -36,9 +37,9 @@
     "twilio": "^5.4.2"
   },
   "devDependencies": {
-    "@capacitor/android": "8.1.0",
+    "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.1.0",
-    "@capacitor/core": "^8.1.0",
+    "@capacitor/core": "^8.3.0",
     "nodemon": "^3.0.1"
   }
 }
