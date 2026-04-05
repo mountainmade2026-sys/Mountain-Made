@@ -6093,15 +6093,23 @@
 
                 const returnLabel = r.return_number || `RET-${r.id}`;
 
-                const isFinal = r.status === 'approved' || r.status === 'received' || r.status === 'refunded' || r.status === 'rejected';
-                const quickActions = !isFinal
-                    ? `<button class="action-btn action-btn-success" onclick="quickUpdateReturn(${r.id}, 'approved')" title="Approve Return">
+                let quickActions = '';
+                if (r.status === 'requested') {
+                    quickActions = `<button class="action-btn action-btn-success" onclick="quickUpdateReturn(${r.id}, 'approved')" title="Approve Return">
                            <i class="fas fa-check-circle"></i> Approve
                        </button>
                        <button class="action-btn action-btn-reject" onclick="quickUpdateReturn(${r.id}, 'rejected')" title="Decline Return">
                            <i class="fas fa-times-circle"></i> Declined
-                       </button>`
-                    : '';
+                       </button>`;
+                } else if (r.status === 'approved') {
+                    quickActions = `<button class="action-btn action-btn-success" onclick="quickUpdateReturn(${r.id}, 'received')" title="Mark as Received">
+                           <i class="fas fa-box-open"></i> Received
+                       </button>`;
+                } else if (r.status === 'received') {
+                    quickActions = `<button class="action-btn action-btn-success" onclick="quickUpdateReturn(${r.id}, 'refunded')" title="Mark as Refunded">
+                           <i class="fas fa-money-bill-wave"></i> Refunded
+                       </button>`;
+                }
 
                 html += `<tr>
                     <td><strong>${returnLabel}</strong></td>
@@ -6127,7 +6135,8 @@
         }
 
         window.quickUpdateReturn = async function(returnId, status) {
-            const label = status === 'approved' ? 'approve' : 'decline';
+            const labelMap = { approved: 'approve', rejected: 'decline', received: 'mark as received', refunded: 'mark as refunded' };
+            const label = labelMap[status] || status;
             if (!(await showConfirmDialog(`Are you sure you want to ${label} this return?`, {
                 title: 'Update Return Status',
                 confirmText: 'Yes, Continue',
@@ -6136,7 +6145,7 @@
 
             try {
                 const resp = await api.put('/admin/returns/' + returnId + '/status', { status });
-                showAlert(resp.message || `Return ${label}d.`, 'success');
+                showAlert(resp.message || `Return updated to ${status}.`, 'success');
                 await loadReturns();
             } catch (err) {
                 showAlert(err.message || 'Failed to update return.', 'error');

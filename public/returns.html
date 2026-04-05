@@ -280,7 +280,7 @@
                             <div class="card-content">
                                 <div class="return-header" style="margin-bottom:1rem;">
                                     <div class="return-header-left">
-                                        <strong>Return RET-${r.id}</strong>
+                                        <strong>Return ${r.return_number || 'RET-' + r.id}</strong>
                                         <p style="color:var(--text-light);margin-top:0.25rem;">Order #${r.order_number || r.order_id} &bull; ${formatDate(r.created_at)}</p>
                                     </div>
                                     <div class="return-header-right">
