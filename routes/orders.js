@@ -27,19 +27,26 @@ router.post('/', async (req, res) => {
 
     const order = await Order.create(orderData);
 
-    // Send notification email to admin (fire and forget — never blocks response)
-    setImmediate(async () => {
+    // Fire-and-forget email notification — does NOT block the order response
+    const capturedUserId = req.user.id;
+    const capturedOrderId = order.id;
+    Promise.resolve().then(async () => {
       try {
-        const userResult = await db.query(
-          'SELECT full_name, phone FROM users WHERE id = $1',
-          [req.user.id]
-        );
+        const [userResult, itemsResult] = await Promise.all([
+          db.query('SELECT full_name, phone FROM users WHERE id = $1', [capturedUserId]),
+          db.query(
+            'SELECT product_name, quantity, price FROM order_items WHERE order_id = $1',
+            [capturedOrderId]
+          )
+        ]);
         const customer = userResult.rows[0] || {};
-        await sendOrderNotificationToAdmin(order, customer, orderData.items || []);
+        const items = itemsResult.rows || [];
+        await sendOrderNotificationToAdmin(order, customer, items);
+        console.log(`[EMAIL] Order notification sent for order ${order.order_number}`);
       } catch (emailErr) {
-        console.error('Order email notification error:', emailErr.message);
+        console.error('[EMAIL] Order notification failed:', emailErr.message, emailErr.stack);
       }
-    });
+    }).catch(err => console.error('[EMAIL] Unhandled order email error:', err.message));
 
     res.status(201).json({ 
       message: 'Order placed successfully.',

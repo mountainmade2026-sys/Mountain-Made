@@ -108,12 +108,12 @@ router.post('/', async (req, res) => {
 
     await client.query('COMMIT');
 
-    // Send notification email to admin (fire and forget)
+    // Fire-and-forget email notification — does NOT block the return response
     const capturedReturn = returnRow;
     const capturedItems = returnItems;
     const capturedOrderId = order_id;
     const capturedUserId = userId;
-    setImmediate(async () => {
+    Promise.resolve().then(async () => {
       try {
         const userResult = await db.pool.query(
           'SELECT full_name, phone FROM users WHERE id = $1',
@@ -140,10 +140,11 @@ router.post('/', async (req, res) => {
           price: ri.price
         }));
         await sendReturnNotificationToAdmin(capturedReturn, customer, enrichedItems, orderNumber);
+        console.log(`[EMAIL] Return notification sent for return ${capturedReturn.return_number}`);
       } catch (emailErr) {
-        console.error('Return email notification error:', emailErr.message);
+        console.error('[EMAIL] Return notification failed:', emailErr.message, emailErr.stack);
       }
-    });
+    }).catch(err => console.error('[EMAIL] Unhandled return email error:', err.message));
 
     res.status(201).json({ message: 'Return request submitted successfully.', return: returnRow });
   } catch (error) {
