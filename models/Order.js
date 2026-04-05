@@ -270,7 +270,7 @@ class Order {
       paramCount++;
     }
 
-    query += ` GROUP BY o.id, u.full_name, u.email ORDER BY o.created_at DESC`;
+    query += ` GROUP BY o.id, u.full_name, u.email, u.phone ORDER BY o.created_at DESC`;
 
     if (filters.limit) {
       query += ` LIMIT $${paramCount}`;
