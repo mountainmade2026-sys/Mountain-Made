@@ -6224,7 +6224,7 @@
             }
         };
 
-        function openReturnActionModal(returnId) {
+        window.openReturnActionModal = function(returnId) {
             const r = (window._returnsCache || []).find(x => x.id === returnId);
             if (!r) return;
 
@@ -6283,7 +6283,7 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        function openReturnViewModal(returnId) {
+        window.openReturnViewModal = function(returnId) {
             const r = (window._returnsCache || []).find(x => x.id === returnId);
             if (!r) return;
 
@@ -6340,7 +6340,7 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        async function submitReturnAction(returnId) {
+        window.submitReturnAction = async function(returnId) {
             const status = document.getElementById('return-new-status').value;
             const admin_notes = document.getElementById('return-admin-notes').value.trim();
 
