@@ -6121,6 +6121,26 @@
             return map[status] || `<span class="badge">${status}</span>`;
         }
 
+        const _returnReasonLabels = {
+            wrong_item:       { label: 'Wrong Item Received',  icon: 'fa-exchange-alt' },
+            damaged:          { label: 'Damaged / Broken',     icon: 'fa-box-open' },
+            not_as_described: { label: 'Not as Described',     icon: 'fa-image' },
+            quality_issue:    { label: 'Quality Issue',        icon: 'fa-thumbs-down' },
+            expired:          { label: 'Expired Product',      icon: 'fa-calendar-times' },
+            changed_mind:     { label: 'Changed My Mind',      icon: 'fa-heart-broken' },
+        };
+
+        function getReturnReasonHtml(reason) {
+            if (!reason) return '<span style="color:var(--text-muted);">—</span>';
+            const entry = _returnReasonLabels[reason];
+            if (entry) {
+                return `<span title="${reason}"><i class="fas ${entry.icon}" style="margin-right:0.3rem;color:var(--text-muted);font-size:0.8rem;"></i>${entry.label}</span>`;
+            }
+            // Free-text fallback: show truncated raw text
+            const safe = reason.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return `<span title="${safe}" style="font-size:0.85rem;">${safe.length > 40 ? safe.slice(0, 40) + '…' : safe}</span>`;
+        }
+
         function renderReturns(returns) {
             const container = document.getElementById('returns-list');
             if (!returns.length) {
@@ -6129,7 +6149,7 @@
             }
 
             let html = '<div class="data-table-container"><table class="data-table"><thead><tr>' +
-                '<th>Return #</th><th>Order</th><th>Customer</th><th>Items</th><th>Refund</th><th>Status</th><th>Date</th><th>Actions</th>' +
+                '<th>Return #</th><th>Order</th><th>Customer</th><th>Items</th><th>Reason</th><th>Refund</th><th>Status</th><th>Date</th><th>Actions</th>' +
                 '</tr></thead><tbody>';
 
             returns.forEach(r => {
@@ -6164,6 +6184,7 @@
                     <td>#${r.order_number || r.order_id}</td>
                     <td>${r.customer_name || 'Unknown'}${roleBadge}<br><small style="color:var(--text-muted);">${r.customer_email || ''}</small></td>
                     <td style="max-width:200px;white-space:normal;font-size:0.85rem;">${itemSummary || '—'}</td>
+                    <td style="white-space:normal;font-size:0.85rem;">${getReturnReasonHtml(r.reason)}</td>
                     <td style="font-weight:600;">₹${parseFloat(r.refund_amount || 0).toFixed(2)}</td>
                     <td>${getReturnStatusBadge(r.status)}</td>
                     <td>${formatDate(r.created_at)}</td>
