@@ -1078,13 +1078,14 @@ exports.getStockReports = async (req, res) => {
     
     for (const product of summaryResult.rows) {
       const transactionsQuery = `
-        SELECT 
-          o.id as order_id,
+        SELECT
+          'sale'           AS type,
+          o.id             AS order_id,
           o.order_number,
-          o.created_at as order_date,
+          o.created_at     AS order_date,
           o.status,
-          u.full_name as customer_name,
-          u.email as customer_email,
+          u.full_name      AS customer_name,
+          u.email          AS customer_email,
           oi.quantity,
           oi.price,
           oi.subtotal
@@ -1092,7 +1093,29 @@ exports.getStockReports = async (req, res) => {
         JOIN orders o ON oi.order_id = o.id
         LEFT JOIN users u ON o.user_id = u.id
         WHERE oi.product_id = $1
-        ORDER BY o.created_at DESC
+
+        UNION ALL
+
+        -- Refunded returns add stock back; include them so the running balance stays correct
+        SELECT
+          'return'                                          AS type,
+          r.id                                             AS order_id,
+          COALESCE(r.return_number, 'RTN-' || r.id::text) AS order_number,
+          r.processed_at                                   AS order_date,
+          r.status,
+          u.full_name  AS customer_name,
+          u.email      AS customer_email,
+          ri.quantity,
+          ri.price,
+          (ri.quantity * ri.price)::DECIMAL(10,2) AS subtotal
+        FROM return_items ri
+        JOIN returns r ON ri.return_id = r.id
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE ri.product_id = $1
+          AND r.status = 'refunded'
+          AND r.processed_at IS NOT NULL
+
+        ORDER BY order_date DESC
       `;
       
       const transactionsResult = await db.query(transactionsQuery, [product.id]);

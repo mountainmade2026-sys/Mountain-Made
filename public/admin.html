@@ -5401,17 +5401,29 @@
                 const currentStock = parseInt(product.current_stock) || 0;
 
                 // Work BACKWARDS from current_stock (ground truth from DB) through
-                // newest → oldest transactions, so the running balance is always
-                // correct regardless of how many transactions are returned.
-                // Transactions from the server are already newest-first (ORDER BY created_at DESC).
+                // newest → oldest events, so the running balance is always correct.
+                // Transactions from the server are already newest-first (ORDER BY event_date DESC).
+                //
+                // Stock direction per event type (going BACKWARDS):
+                //   sale (non-cancelled) → stock was REDUCED → add qty back
+                //   sale (cancelled)     → no net stock change (cancel restores it)
+                //   return (refunded)    → stock was ADDED → subtract qty back
                 let runningStock = currentStock;
                 const rowsNewestFirst = product.transactions.map(t => {
                     const qty = parseInt(t.quantity) || 0;
-                    const affectsStock = t.status !== 'cancelled';
+                    const isReturn = t.type === 'return';
+                    const isCancelled = !isReturn && t.status === 'cancelled';
                     const stockAfter = runningStock;
-                    const stockBefore = affectsStock ? (runningStock + qty) : runningStock;
+                    let stockBefore;
+                    if (isReturn) {
+                        stockBefore = runningStock - qty; // return added stock; going back → subtract
+                    } else if (isCancelled) {
+                        stockBefore = runningStock;       // cancelled orders net zero stock
+                    } else {
+                        stockBefore = runningStock + qty; // sale reduced stock; going back → add
+                    }
                     runningStock = stockBefore;
-                    return { t, qty, stockBefore, stockAfter };
+                    return { t, qty, stockBefore, stockAfter, isReturn, isCancelled };
                 });
 
                 // Reverse so the table displays oldest → newest (top to bottom)
@@ -5471,21 +5483,30 @@
                     }
 
                     let rowsHtml = '';
-                    rows.forEach(({ t, qty, stockBefore, stockAfter }) => {
+                    rows.forEach(({ t, qty, stockBefore, stockAfter, isReturn, isCancelled }) => {
+                        const qtyColor = isReturn ? 'color:#22c55e;' : 'color:var(--danger);';
+                        const qtyPrefix = isReturn ? '+' : '-';
+                        const rowBg = isReturn ? 'style="background:rgba(34,197,94,0.06);"' : '';
+                        const refBadge = isReturn
+                            ? ` <span class="badge badge-success" style="font-size:0.7rem;vertical-align:middle;">RETURN</span>`
+                            : '';
+                        const statusBadge = isReturn
+                            ? `<span class="badge badge-success">refunded</span>`
+                            : `<span class="badge badge-${t.status === 'delivered' ? 'success' : t.status === 'cancelled' ? 'danger' : 'warning'}">${t.status}</span>`;
                         rowsHtml += `
-                            <tr>
+                            <tr ${rowBg}>
                                 <td>${formatDate(t.order_date)}</td>
-                                <td><strong>${t.order_number}</strong></td>
+                                <td><strong>${t.order_number}</strong>${refBadge}</td>
                                 <td>
                                     <div>${t.customer_name || 'No account'}</div>
                                     ${t.customer_email ? `<div style="font-size: 0.85rem; color: var(--text-muted);">${t.customer_email}</div>` : ''}
                                 </td>
-                                <td><strong style="color: var(--danger);">${qty}</strong></td>
+                                <td><strong style="${qtyColor}">${qtyPrefix}${qty}</strong></td>
                                 <td>${stockBefore}</td>
                                 <td>${stockAfter}</td>
                                 <td>${formatCurrency(t.price)}</td>
                                 <td><strong>${formatCurrency(t.subtotal)}</strong></td>
-                                <td><span class="badge badge-${t.status === 'delivered' ? 'success' : t.status === 'cancelled' ? 'danger' : 'warning'}">${t.status}</span></td>
+                                <td>${statusBadge}</td>
                             </tr>
                         `;
                     });
@@ -5558,23 +5579,26 @@
                     csv += `Exported At: ${new Date().toLocaleString()}\n`;
                 }
                 csv += '\n';
-                csv += 'Date,Order Number,Customer,Email,Quantity,Stock Before,Stock After,Price,Total,Status\n';
+                csv += 'Date,Type,Order/Return Number,Customer,Email,Quantity,Stock Before,Stock After,Price,Total,Status\n';
 
-                rows.forEach(({ t, qty, stockBefore, stockAfter }) => {
+                rows.forEach(({ t, qty, stockBefore, stockAfter, isReturn }) => {
                     const dateStr = formatDate(t.order_date);
+                    const type = isReturn ? 'Return' : 'Sale';
                     const orderNo = t.order_number || '';
                     const customerName = t.customer_name || 'No account';
                     const customerEmail = t.customer_email || '';
+                    const qtyDisplay = isReturn ? `+${qty}` : `-${qty}`;
                     const price = t.price != null ? t.price : '';
                     const subtotal = t.subtotal != null ? t.subtotal : '';
-                    const status = t.status || '';
+                    const status = isReturn ? 'refunded' : (t.status || '');
 
                     csv += [
                         safe(dateStr),
+                        safe(type),
                         safe(orderNo),
                         safe(customerName),
                         safe(customerEmail),
-                        safe(qty),
+                        safe(qtyDisplay),
                         safe(stockBefore),
                         safe(stockAfter),
                         safe(price),
