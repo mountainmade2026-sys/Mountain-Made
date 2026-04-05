@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { sendReturnNotificationToAdmin } = require('../utils/emailService');
 
 router.use(authenticateToken);
 
@@ -106,6 +107,43 @@ router.post('/', async (req, res) => {
     }
 
     await client.query('COMMIT');
+
+    // Send notification email to admin (fire and forget)
+    const capturedReturn = returnRow;
+    const capturedItems = returnItems;
+    const capturedOrderId = order_id;
+    const capturedUserId = userId;
+    setImmediate(async () => {
+      try {
+        const userResult = await db.pool.query(
+          'SELECT full_name, phone FROM users WHERE id = $1',
+          [capturedUserId]
+        );
+        const customer = userResult.rows[0] || {};
+        const orderResult = await db.pool.query(
+          'SELECT order_number FROM orders WHERE id = $1',
+          [capturedOrderId]
+        );
+        const orderNumber = orderResult.rows[0]?.order_number || '';
+        const productIds = capturedItems.map(ri => ri.product_id).filter(Boolean);
+        let prodMap = {};
+        if (productIds.length) {
+          const prodsResult = await db.pool.query(
+            'SELECT id, name FROM products WHERE id = ANY($1)',
+            [productIds]
+          );
+          prodsResult.rows.forEach(p => { prodMap[p.id] = p.name; });
+        }
+        const enrichedItems = capturedItems.map(ri => ({
+          product_name: prodMap[ri.product_id] || '-',
+          quantity: ri.quantity,
+          price: ri.price
+        }));
+        await sendReturnNotificationToAdmin(capturedReturn, customer, enrichedItems, orderNumber);
+      } catch (emailErr) {
+        console.error('Return email notification error:', emailErr.message);
+      }
+    });
 
     res.status(201).json({ message: 'Return request submitted successfully.', return: returnRow });
   } catch (error) {

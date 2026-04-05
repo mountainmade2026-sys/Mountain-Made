@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Razorpay = require('razorpay');
+const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { blockAdminCommerce } = require('../middleware/commerceAccess');
+const { sendOrderNotificationToAdmin } = require('../utils/emailService');
 
 // All order routes require authentication
 router.use(authenticateToken);
@@ -24,6 +26,21 @@ router.post('/', async (req, res) => {
     };
 
     const order = await Order.create(orderData);
+
+    // Send notification email to admin (fire and forget — never blocks response)
+    setImmediate(async () => {
+      try {
+        const userResult = await db.query(
+          'SELECT full_name, phone FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const customer = userResult.rows[0] || {};
+        await sendOrderNotificationToAdmin(order, customer, orderData.items || []);
+      } catch (emailErr) {
+        console.error('Order email notification error:', emailErr.message);
+      }
+    });
+
     res.status(201).json({ 
       message: 'Order placed successfully.',
       order 
