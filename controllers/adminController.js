@@ -1093,7 +1093,6 @@ exports.getStockReports = async (req, res) => {
         LEFT JOIN users u ON o.user_id = u.id
         WHERE oi.product_id = $1
         ORDER BY o.created_at DESC
-        LIMIT 50
       `;
       
       const transactionsResult = await db.query(transactionsQuery, [product.id]);

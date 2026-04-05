@@ -5397,26 +5397,28 @@
             titleEl.textContent = `${product.name} - Transaction History`;
 
             if (product.transactions && product.transactions.length > 0) {
-                // Order transactions chronologically so we can calculate stock before/after each sale
-                const ordered = [...product.transactions].sort((a, b) => {
-                    return new Date(a.order_date) - new Date(b.order_date);
-                });
-
                 const initialStock = parseInt(product.initial_stock) || 0;
-                let runningStock = initialStock;
+                const currentStock = parseInt(product.current_stock) || 0;
 
-                // Pre-compute stock before/after for every row (so filtering doesn't break the math)
-                const computedRows = ordered.map(t => {
+                // Work BACKWARDS from current_stock (ground truth from DB) through
+                // newest → oldest transactions, so the running balance is always
+                // correct regardless of how many transactions are returned.
+                // Transactions from the server are already newest-first (ORDER BY created_at DESC).
+                let runningStock = currentStock;
+                const rowsNewestFirst = product.transactions.map(t => {
                     const qty = parseInt(t.quantity) || 0;
                     const affectsStock = t.status !== 'cancelled';
-                    const stockBefore = runningStock;
-                    const stockAfter = affectsStock ? (runningStock - qty) : runningStock;
-                    runningStock = stockAfter;
+                    const stockAfter = runningStock;
+                    const stockBefore = affectsStock ? (runningStock + qty) : runningStock;
+                    runningStock = stockBefore;
                     return { t, qty, stockBefore, stockAfter };
                 });
 
+                // Reverse so the table displays oldest → newest (top to bottom)
+                const computedRows = rowsNewestFirst.slice().reverse();
+
                 let html = '<div style="margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.9rem;">';
-                html += `Category: <strong>${product.category_name || 'N/A'}</strong> | ID: <strong>#${product.id}</strong> | Initial Stock: <strong>${initialStock}</strong>`;
+                html += `Category: <strong>${product.category_name || 'N/A'}</strong> | ID: <strong>#${product.id}</strong> | Initial Stock: <strong>${initialStock}</strong> | Current Stock: <strong>${currentStock}</strong>`;
                 html += '</div>';
 
                 html += `
