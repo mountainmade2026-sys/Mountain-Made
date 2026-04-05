@@ -818,6 +818,10 @@ const initializeDatabase = async () => {
         processed_at TIMESTAMP
       );
     `);
+    // Add return_number column if it doesn't exist (unique business reference)
+    await client.query(`
+      ALTER TABLE returns ADD COLUMN IF NOT EXISTS return_number VARCHAR(50) UNIQUE;
+    `);
 
     // Create Return Items table
     await client.query(`

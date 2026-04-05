@@ -5,7 +5,34 @@ const { authenticateToken } = require('../middleware/auth');
 
 router.use(authenticateToken);
 
-// ── Customer: Request a return ──────────────────────────────────────────
+// ── Generate unique return number ───────────────────────────────────────
+async function generateReturnNumber(client) {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(now.getFullYear());
+  const base = `MMRT${dd}${mm}${yyyy}`;
+
+  const result = await client.query(
+    `SELECT return_number FROM returns WHERE return_number LIKE $1`,
+    [`${base}%`]
+  );
+  const existing = result.rows.map(r => r.return_number).filter(Boolean);
+
+  if (!existing.includes(base)) return base;
+
+  let maxSuffix = 1;
+  for (const rn of existing) {
+    const m = rn.match(new RegExp(`^${base}(\\d+)$`));
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > maxSuffix) maxSuffix = n;
+    }
+  }
+  return `${base}${maxSuffix + 1}`;
+}
+
+
 router.post('/', async (req, res) => {
   const client = await db.pool.connect();
   try {
@@ -62,10 +89,11 @@ router.post('/', async (req, res) => {
 
     await client.query('BEGIN');
 
+    const returnNumber = await generateReturnNumber(client);
     const returnResult = await client.query(
-      `INSERT INTO returns (order_id, user_id, reason, status, refund_amount, created_at, updated_at)
-       VALUES ($1, $2, $3, 'requested', $4, NOW(), NOW()) RETURNING *`,
-      [order_id, userId, reason.substring(0, 1000), refundAmount]
+      `INSERT INTO returns (order_id, user_id, reason, status, refund_amount, return_number, created_at, updated_at)
+       VALUES ($1, $2, $3, 'requested', $4, $5, NOW(), NOW()) RETURNING *`,
+      [order_id, userId, reason.substring(0, 1000), refundAmount, returnNumber]
     );
     const returnRow = returnResult.rows[0];
 
