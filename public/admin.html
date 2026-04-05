@@ -7898,7 +7898,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
             filtered.forEach(o => {
                 const deliverySpeed = (o.delivery_speed || 'standard').toLowerCase();
                 const deliveryCharge = o.delivery_charge != null ? parseFloat(o.delivery_charge) : 0;
@@ -7920,6 +7920,18 @@
                     ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
                     : '<span style="color:var(--text-muted);">—</span>';
 
+                const isFinal = o.status === 'delivered' || o.status === 'cancelled';
+                const actionsHtml = isFinal
+                    ? '<span style="color:var(--text-muted);font-size:0.82rem;">—</span>'
+                    : `<div class="table-actions">
+                        <button class="action-btn action-btn-success" onclick="updateOrderStatus(${o.id}, 'delivered')" title="Mark as Delivered">
+                            <i class="fas fa-check-circle"></i> Delivered
+                        </button>
+                        <button class="action-btn action-btn-reject" onclick="updateOrderStatus(${o.id}, 'cancelled')" title="Decline Order">
+                            <i class="fas fa-times-circle"></i> Declined
+                        </button>
+                       </div>`;
+
                 html += `
                     <tr>
                         <td>#${o.id}</td>
@@ -7930,6 +7942,7 @@
                         <td>${deliveryLabel}</td>
                         <td><span class="badge badge-${o.status === 'delivered' ? 'success' : o.status === 'cancelled' ? 'danger' : 'warning'}">${o.status}</span></td>
                         <td>${formatDate(o.created_at)}</td>
+                        <td>${actionsHtml}</td>
                     </tr>
                 `;
             });
@@ -8001,7 +8014,7 @@
         };
 
         window.updateOrderStatus = async function(orderId, status) {
-            const verb = status === 'processing' ? 'confirm' : status === 'cancelled' ? 'reject' : 'update';
+            const verb = status === 'processing' ? 'confirm' : status === 'cancelled' ? 'decline' : status === 'delivered' ? 'mark as delivered' : 'update';
             if (!(await showConfirmDialog(`Are you sure you want to ${verb} this order?`, {
                 title: 'Update Order Status',
                 confirmText: 'Yes, Continue',
