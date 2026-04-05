@@ -1,24 +1,79 @@
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
+const https = require('https');
 
+// ── Resend (HTTPS) ── works on Render since it uses port 443, not SMTP ──
+function canUseResend() {
+  return !!(String(process.env.RESEND_API_KEY || '').trim() && String(process.env.RESEND_FROM_EMAIL || '').trim());
+}
+
+async function sendViaResend({ to, subject, html }) {
+  const key  = String(process.env.RESEND_API_KEY || '').trim();
+  const from = String(process.env.RESEND_FROM_EMAIL || '').trim();
+  const payload = JSON.stringify({ from, to, subject, html });
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      method: 'POST', hostname: 'api.resend.com', path: '/emails',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`, 'Content-Length': Buffer.byteLength(payload) }
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => res.statusCode >= 200 && res.statusCode < 300 ? resolve() : reject(new Error(`Resend ${res.statusCode}: ${data}`)));
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+// ── SMTP (port 465 SSL — more reliable on Render than 587) ──
 function createTransporter() {
   const host = String(process.env.SMTP_HOST || '').trim();
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  // Force port 465 (SSL) — Render blocks 587 (STARTTLS). Override with SMTP_PORT=465 if already set.
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
   const user = String(process.env.SMTP_USER || '').trim();
-  // Strip whitespace/spaces in case the app password was pasted with spaces
   const pass = String(process.env.SMTP_PASS || '').replace(/\s/g, '');
 
   if (!host || !user || !pass) return null;
 
   return nodemailer.createTransport({
     host,
-    port: Number.isFinite(port) ? port : 587,
-    secure: Number(port) === 465,
+    port: Number.isFinite(port) ? port : 465,
+    secure: true,           // always SSL — required for port 465
     auth: { user, pass },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000
   });
+}
+
+// ── Send via SMTP, fall back to Resend if SMTP fails ──
+async function sendEmail({ to, subject, html, fromLabel }) {
+  const user      = String(process.env.SMTP_USER || '').trim();
+  const fromEmail = String(process.env.SMTP_FROM_EMAIL || user).trim();
+  const from      = fromLabel ? `${fromLabel} <${fromEmail}>` : fromEmail;
+  let lastErr = null;
+
+  // Try SMTP first
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      await transporter.sendMail({ from, to, subject, html });
+      return; // success
+    } catch (err) {
+      lastErr = err;
+      console.error('[EMAIL] SMTP failed, trying Resend fallback:', err.message);
+    }
+  }
+
+  // Fallback: Resend via HTTPS (never blocked by Render)
+  if (canUseResend()) {
+    await sendViaResend({ to, subject, html });
+    return; // success via Resend
+  }
+
+  // Both failed
+  throw lastErr || new Error('No email transport configured.');
 }
 
 function getBaseUrl() {
@@ -34,11 +89,7 @@ function makeActionToken(type, id, action) {
 }
 
 async function sendOrderNotificationToAdmin(order, customer, items) {
-  const transporter = createTransporter();
   const adminEmail = String(process.env.ADMIN_NOTIFICATION_EMAIL || 'mountainmade2026@gmail.com').trim();
-  const fromEmail = String(process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
-
-  if (!transporter || !fromEmail) return; // Email not configured yet
 
   const baseUrl = getBaseUrl();
   const confirmToken = makeActionToken('order', order.id, 'confirm');
@@ -111,24 +162,16 @@ async function sendOrderNotificationToAdmin(order, customer, items) {
 </body>
 </html>`;
 
-  try {
-    await transporter.sendMail({
-      from: `Mount Made <${fromEmail}>`,
-      to: adminEmail,
-      subject: `New Order: ${order.order_number || order.id} from ${customer.full_name || 'Customer'}`,
-      html
-    });
-  } catch (err) {
-    console.error('Order notification email error:', err.message);
-  }
+  await sendEmail({
+    to: adminEmail,
+    subject: `New Order: ${order.order_number || order.id} from ${customer.full_name || 'Customer'}`,
+    html,
+    fromLabel: 'Mount Made'
+  });
 }
 
 async function sendReturnNotificationToAdmin(returnRow, customer, items, orderNumber) {
-  const transporter = createTransporter();
   const adminEmail = String(process.env.ADMIN_NOTIFICATION_EMAIL || 'mountainmade2026@gmail.com').trim();
-  const fromEmail = String(process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
-
-  if (!transporter || !fromEmail) return;
 
   const baseUrl = getBaseUrl();
   const approveToken = makeActionToken('return', returnRow.id, 'approve');
@@ -186,16 +229,12 @@ async function sendReturnNotificationToAdmin(returnRow, customer, items, orderNu
 </body>
 </html>`;
 
-  try {
-    await transporter.sendMail({
-      from: `Mount Made <${fromEmail}>`,
-      to: adminEmail,
-      subject: `Return Request: ${returnId} from ${customer.full_name || 'Customer'}`,
-      html
-    });
-  } catch (err) {
-    console.error('Return notification email error:', err.message);
-  }
+  await sendEmail({
+    to: adminEmail,
+    subject: `Return Request: ${returnId} from ${customer.full_name || 'Customer'}`,
+    html,
+    fromLabel: 'Mount Made'
+  });
 }
 
 module.exports = { sendOrderNotificationToAdmin, sendReturnNotificationToAdmin };

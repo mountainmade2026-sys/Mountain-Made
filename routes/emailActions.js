@@ -22,7 +22,7 @@ router.get('/test', async (req, res) => {
   try {
     const t = nodemailer.createTransport({
       host, port,
-      secure: port === 465,
+      secure: true,   // port 465 SSL — Render blocks 587
       auth: { user, pass }
     });
 
