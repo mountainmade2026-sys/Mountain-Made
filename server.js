@@ -18,6 +18,10 @@ if (!process.env.JWT_SECRET || String(process.env.JWT_SECRET).trim().length < 16
   process.exit(1);
 }
 
+// Cache-bust version: changes on every deploy so browsers never serve stale
+// immutable-cached upload images from a previous data set.
+global.ASSET_VERSION = Date.now().toString(36);
+
 const database = require('./config/database');
 const { initializeDatabase } = database;
 const User = require('./models/User');
@@ -209,6 +213,26 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 app.use(compression());
+
+// ── Upload URL cache-busting middleware ──────────────────────────────────
+// Rewrites every "/uploads/<id>" string in JSON API responses to
+// "/uploads/<id>?v=<deploy_version>".  The query param forces browsers to
+// fetch fresh even when they have the old URL cached as `immutable`.
+// The /uploads/:id handler already ignores query-string params.
+app.use((req, res, next) => {
+  const _json = res.json.bind(res);
+  res.json = function (body) {
+    try {
+      if (body !== null && body !== undefined) {
+        const str = JSON.stringify(body)
+          .replace(/"\/uploads\/(\d+)"/g, `"/uploads/$1?v=${global.ASSET_VERSION}"`);
+        return _json(JSON.parse(str));
+      }
+    } catch (_) { /* fall through */ }
+    return _json(body);
+  };
+  next();
+});
 // Apply general rate limit to all API routes
 app.use('/api/', apiLimiter);
 
