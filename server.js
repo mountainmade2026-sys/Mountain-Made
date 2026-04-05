@@ -144,7 +144,7 @@ const authLimiter = rateLimit({
 // General API limit — prevents scraping / DoS
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 200,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please slow down.' }

@@ -1,0 +1,76 @@
+config:
+  target: "https://mountmade.in"
+  phases:
+    # Phase 1: Warm up
+    - duration: 30
+      arrivalRate: 10
+      name: "Warm up"
+    # Phase 2: Peak load — 50 concurrent users
+    - duration: 60
+      arrivalRate: 50
+      name: "Peak load (50 users)"
+    # Phase 3: Spike — sudden surge
+    - duration: 20
+      arrivalRate: 100
+      name: "Spike test"
+  http:
+    timeout: 15
+  defaults:
+    headers:
+      Content-Type: "application/json"
+  # Rotate through 5 real test accounts
+  payload:
+    path: "load-test-users.csv"
+    fields:
+      - "email"
+      - "password"
+
+scenarios:
+  # Scenario 1: Browse products (no login needed)
+  - name: "Browse products"
+    weight: 50
+    flow:
+      - get:
+          url: "/api/products"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/products?limit=20"
+          expect:
+            - statusCode: 200
+
+  # Scenario 2: View product details
+  - name: "View product detail"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/products/1"
+      - get:
+          url: "/api/products/2"
+
+  # Scenario 3: Login + check orders + cart (rotates through 5 real accounts)
+  - name: "Login and check orders"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/cart"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/orders"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
