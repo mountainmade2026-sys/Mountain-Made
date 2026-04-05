@@ -883,7 +883,7 @@
                             <span>× ${priceBlock}</span>
                         </div>
                     </span>
-                    <strong>${formatCurrency(item.price * item.quantity)}</strong>
+                    <strong data-item-subtotal="${item.id}">${formatCurrency(item.price * item.quantity)}</strong>
                 </div>`;
                 updateOrderSummaryTotals();
                 await loadUserAddresses();
@@ -929,7 +929,7 @@
                             <span>× ${priceBlock}</span>
                         </div>
                     </span>
-                    <strong>${formatCurrency(resolveItemSubtotal(item))}</strong>
+                    <strong data-item-subtotal="${item.id}">${formatCurrency(resolveItemSubtotal(item))}</strong>
                 </div>`;
             }).join('');
             updateOrderSummaryTotals();
@@ -984,27 +984,32 @@
                 return;
             }
 
-            // For direct buy, update in-memory only (no cart API call)
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('directbuy') === '1') {
-                const item = cartData?.cartItems?.find(i => i.id === itemId);
-                if (item) {
-                    item.quantity = qty;
-                    cartData.total = item.price * qty;
-                    checkoutCartSubtotal = item.price * qty;
-                    const subtotalEl = document.querySelector(`#checkout-qty-${itemId}`)?.closest('div')?.parentElement?.querySelector('strong');
-                    if (subtotalEl) subtotalEl.textContent = formatCurrency(item.price * qty);
-                    updateOrderSummaryTotals();
-                }
-                return;
+            // Update UI immediately (optimistic update for both flows)
+            const item = cartData?.cartItems?.find(i => i.id === itemId);
+            if (item) {
+                const unitPrice = resolveItemUnitPrice(item);
+                const newSubtotal = unitPrice * qty;
+                item.quantity = qty;
+                item.subtotal = newSubtotal;
+                const subtotalEl = document.querySelector(`[data-item-subtotal="${itemId}"]`);
+                if (subtotalEl) subtotalEl.textContent = formatCurrency(newSubtotal);
+                cartData.total = computeCartSubtotal(cartData);
+                checkoutCartSubtotal = cartData.total;
+                updateOrderSummaryTotals();
             }
 
+            // For direct buy, no server sync needed
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('directbuy') === '1') return;
+
+            // Regular cart: persist to server
             try {
                 await cart.update(itemId, qty);
-                await loadCheckout();
             } catch (err) {
                 console.error('Failed to update quantity in checkout:', err);
                 showAlert('Failed to update quantity. Please try again.', 'error');
+                // Revert to server state on error
+                await loadCheckout();
             }
         }
 
