@@ -906,21 +906,8 @@ const initializeDatabase = async () => {
     await client.query('TRUNCATE TABLE product_stock_report_table');
     await client.query('INSERT INTO product_stock_report_table SELECT * FROM product_stock_report');
 
-    // Insert default categories only when the table is empty
-    // so deleted categories do not get recreated on every restart.
-    const categoryCountResult = await client.query('SELECT COUNT(*)::int AS count FROM categories');
-    if (categoryCountResult.rows[0].count === 0) {
-      await client.query(`
-        INSERT INTO categories (name, description, image_url) VALUES
-        ('Fresh Produce', 'Farm-fresh fruits and vegetables', '/images/categories/produce.jpg'),
-        ('Dairy Products', 'Milk, cheese, and dairy items', '/images/categories/dairy.jpg'),
-        ('Bakery', 'Fresh bread and baked goods', '/images/categories/bakery.jpg'),
-        ('Meat & Poultry', 'Quality meats and poultry', '/images/categories/meat.jpg'),
-        ('Beverages', 'Drinks and refreshments', '/images/categories/beverages.jpg'),
-        ('Snacks', 'Healthy snacks and treats', '/images/categories/snacks.jpg')
-        ON CONFLICT (name) DO NOTHING;
-      `);
-    }
+    // Default categories are no longer auto-inserted.
+    // Manage categories manually through the admin panel.
 
     // Insert default homepage section only when the table is empty
     const sectionCountResult = await client.query('SELECT COUNT(*)::int AS count FROM homepage_sections');
