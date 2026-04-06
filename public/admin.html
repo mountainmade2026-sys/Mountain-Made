@@ -1235,6 +1235,15 @@
 <body>
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; max-width:90vw; width:400px; margin:auto; box-shadow:0 4px 32px rgba(0,0,0,0.18); padding:2.5rem 2rem; text-align:center; position:relative;">
+            <i class="fas fa-check-circle" style="color:#28a745; font-size:2.5rem; margin-bottom:1rem;"></i>
+            <div id="success-modal-message" style="font-size:1.1rem; color:#222; margin-bottom:1.5rem;"></div>
+            <button class="btn btn-success" onclick="closeSuccessModal()">OK</button>
+        </div>
+    </div>
+
     <nav class="navbar">
         <div style="display: flex; align-items: center; gap: 1rem;">
             <button id="menu-toggle" onclick="toggleSidebar()">
@@ -1243,14 +1252,6 @@
             <a href="/" class="navbar-brand">
                 <span>Admin Panel</span>
             </a>
-        </div>
-        <!-- Success Modal -->
-        <div id="success-modal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); align-items:center; justify-content:center;">
-            <div style="background:white; border-radius:12px; max-width:90vw; width:400px; margin:auto; box-shadow:0 4px 32px rgba(0,0,0,0.18); padding:2.5rem 2rem; text-align:center; position:relative;">
-                <i class="fas fa-check-circle" style="color:#28a745; font-size:2.5rem; margin-bottom:1rem;"></i>
-                <div id="success-modal-message" style="font-size:1.1rem; color:#222; margin-bottom:1.5rem;"></div>
-                <button class="btn btn-success" onclick="closeSuccessModal()">OK</button>
-            </div>
         </div>
         <div class="navbar-actions">
             <span id="user-name" style="color: var(--text-muted); display: none;"></span>
