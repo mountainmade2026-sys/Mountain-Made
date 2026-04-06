@@ -81,12 +81,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: -webkit-sticky;
             position: sticky;
             top: 0;
             z-index: 1100;
             height: 60px;
+            min-height: 60px;
             border-bottom: 1px solid rgba(212,175,55,0.18);
             box-shadow: 0 2px 20px rgba(0,0,0,0.35);
+            overflow: visible;
         }
 
         /* Gold top accent line */
@@ -107,6 +110,8 @@
             align-items: center;
             gap: 0.6rem;
             letter-spacing: 0.01em;
+            flex: 1;
+            min-width: 0;
         }
 
         .navbar-brand img { height: 32px; }
@@ -122,6 +127,7 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            flex-shrink: 0;
         }
 
         #user-name {
@@ -159,6 +165,7 @@
             flex-direction: column;
             overflow: hidden;
             flex-shrink: 0;
+            position: -webkit-sticky;
             position: sticky;
             top: 60px;
             transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
@@ -169,6 +176,7 @@
             flex: 1 1 0;
             overflow-y: auto;
             overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
             padding-bottom: 0.5rem;
         }
         .sidebar-nav-scroll::-webkit-scrollbar { width: 3px; }
@@ -1112,8 +1120,15 @@
         .hide-mobile { display: inline; }
 
         /* ═══════ RESPONSIVE ═══════ */
+        /* Mac / medium-width screens: compact navbar buttons */
+        @media (max-width: 1280px) {
+            .navbar-actions { gap: 0.5rem; }
+            #user-name { display: none !important; }
+        }
+
         @media (max-width: 1200px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .btn.btn-sm { padding: 0.38rem 0.7rem; font-size: 0.8rem; }
         }
 
         @media (max-width: 1024px) {
@@ -3698,6 +3713,31 @@
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('active');
         };
+
+        // Touch swipe support for Mac/iOS Safari sidebar
+        (function() {
+            var touchStartX = 0;
+            var touchStartY = 0;
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+            document.addEventListener('touchend', function(e) {
+                var dx = e.changedTouches[0].clientX - touchStartX;
+                var dy = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(dx) < Math.abs(dy)) return; // vertical swipe, ignore
+                if (Math.abs(dx) < 50) return; // too short
+                var sidebar = document.getElementById('admin-sidebar');
+                if (dx > 0 && touchStartX < 40) {
+                    // swipe right from left edge → open
+                    sidebar.classList.add('mobile-open');
+                    document.getElementById('sidebar-overlay').classList.add('active');
+                } else if (dx < 0 && sidebar.classList.contains('mobile-open')) {
+                    // swipe left → close
+                    window.closeSidebar();
+                }
+            }, { passive: true });
+        })();
 
         // Show section and load data
         window.showSection = function(id) {
