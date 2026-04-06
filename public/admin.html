@@ -1,4 +1,4 @@
-        
+﻿        
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2080,267 +2080,175 @@
                     <div class="table-header">
                         <h3><i class="fas fa-layer-group"></i> Featured Deals – Flip Cards</h3>
                     </div>
-                    <div style="padding: 2rem;">
-                        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                            Upload <strong>front</strong> and <strong>back</strong> images for each of the 5 flip cards displayed below Featured Products on the homepage.
-                            Add a <strong>CTA label</strong> (shown on the front banner) and an optional <strong>subtitle</strong> shown beneath the card.
-                            Cards auto-flip every 2 seconds on the homepage.
+                    <div style="padding: 1.25rem;">
+                        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size:0.85rem;">
+                            Upload front &amp; back images, CTA label and subtitle for each flip card on the homepage.
                         </p>
-                        <div style="display:flex;flex-direction:column;gap:2rem;">
+                        <div style="display:flex;flex-direction:column;gap:0.75rem;" id="flipcards-compact-list">
 
                             <!-- Card 1 -->
-                            <div class="data-table-container" style="border:2px solid #1e88e522;border-radius:12px;overflow:hidden;">
-                                <div class="table-header" style="background:#1e88e518;border-bottom:2px solid #1e88e533;padding:0.85rem 1.25rem;display:flex;align-items:center;gap:0.6rem;">
-                                    <span style="background:#1e88e5;color:#fff;font-size:0.75rem;font-weight:800;padding:2px 9px;border-radius:20px;">CARD 1</span>
-                                    <span style="font-weight:700;color:var(--text-primary);font-size:1rem;">Flip Card 1</span>
-                                </div>
-                                <div style="padding:1.5rem;">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1rem;">
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-image" style="color:#1e88e5;"></i> Front Image</label>
-                                            <input type="hidden" id="fc-front-url-1">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-front-preview-1" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-front-placeholder-1" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-front-file-1" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(1,'front')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(1,'front')"><i class="fas fa-save"></i> Save Front</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(1,'front')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-redo" style="color:#e64a19;"></i> Back Image</label>
-                                            <input type="hidden" id="fc-back-url-1">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-back-preview-1" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-back-placeholder-1" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-redo" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-back-file-1" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(1,'back')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(1,'back')"><i class="fas fa-save"></i> Save Back</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(1,'back')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
+                            <div style="border:1.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                                <span style="background:#1e88e5;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:12px;flex-shrink:0;">1</span>
+                                <div style="display:flex;gap:0.6rem;align-items:center;flex-shrink:0;">
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-front-preview-1" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-front-placeholder-1" style="color:#bbb;font-size:0.6rem;text-align:center;">Front</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem;">
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-tag"></i> Front CTA Label</label>
-                                            <input type="text" id="fc-label-1" class="form-input" placeholder="Shop now" maxlength="40">
-                                        </div>
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-align-left"></i> Card Subtitle</label>
-                                            <input type="text" id="fc-title-1" class="form-input" placeholder="e.g. Sun expert" maxlength="50">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top:0.85rem;">
-                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(1)"><i class="fas fa-check-circle"></i> Save Texts for Card 1</button>
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-back-preview-1" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-back-placeholder-1" style="color:#bbb;font-size:0.6rem;text-align:center;">Back</span>
                                     </div>
                                 </div>
+                                <div style="display:flex;flex-direction:column;gap:0.35rem;flex:1;min-width:200px;">
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-front-file-1" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(1,'front')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(1,'front')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Front</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(1,'front')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-back-file-1" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(1,'back')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(1,'back')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Back</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(1,'back')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;margin-top:0.15rem;">
+                                        <input type="text" id="fc-label-1" class="form-input" placeholder="CTA Label" maxlength="40" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <input type="text" id="fc-title-1" class="form-input" placeholder="Subtitle" maxlength="50" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(1)" style="padding:0.2rem 0.5rem;font-size:0.72rem;white-space:nowrap;"><i class="fas fa-check"></i> Save</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="fc-front-url-1"><input type="hidden" id="fc-back-url-1">
                             </div>
 
                             <!-- Card 2 -->
-                            <div class="data-table-container" style="border:2px solid #ff8c0022;border-radius:12px;overflow:hidden;">
-                                <div class="table-header" style="background:#ff8c0018;border-bottom:2px solid #ff8c0033;padding:0.85rem 1.25rem;display:flex;align-items:center;gap:0.6rem;">
-                                    <span style="background:#ff8c00;color:#fff;font-size:0.75rem;font-weight:800;padding:2px 9px;border-radius:20px;">CARD 2</span>
-                                    <span style="font-weight:700;color:var(--text-primary);font-size:1rem;">Flip Card 2</span>
-                                </div>
-                                <div style="padding:1.5rem;">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1rem;">
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-image" style="color:#1e88e5;"></i> Front Image</label>
-                                            <input type="hidden" id="fc-front-url-2">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-front-preview-2" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-front-placeholder-2" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-front-file-2" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(2,'front')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(2,'front')"><i class="fas fa-save"></i> Save Front</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(2,'front')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-redo" style="color:#e64a19;"></i> Back Image</label>
-                                            <input type="hidden" id="fc-back-url-2">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-back-preview-2" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-back-placeholder-2" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-redo" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-back-file-2" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(2,'back')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(2,'back')"><i class="fas fa-save"></i> Save Back</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(2,'back')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
+                            <div style="border:1.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                                <span style="background:#ff8c00;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:12px;flex-shrink:0;">2</span>
+                                <div style="display:flex;gap:0.6rem;align-items:center;flex-shrink:0;">
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-front-preview-2" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-front-placeholder-2" style="color:#bbb;font-size:0.6rem;text-align:center;">Front</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem;">
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-tag"></i> Front CTA Label</label>
-                                            <input type="text" id="fc-label-2" class="form-input" placeholder="Limited time deal" maxlength="40">
-                                        </div>
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-align-left"></i> Card Subtitle</label>
-                                            <input type="text" id="fc-title-2" class="form-input" placeholder="e.g. Limited time deal" maxlength="50">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top:0.85rem;">
-                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(2)"><i class="fas fa-check-circle"></i> Save Texts for Card 2</button>
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-back-preview-2" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-back-placeholder-2" style="color:#bbb;font-size:0.6rem;text-align:center;">Back</span>
                                     </div>
                                 </div>
+                                <div style="display:flex;flex-direction:column;gap:0.35rem;flex:1;min-width:200px;">
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-front-file-2" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(2,'front')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(2,'front')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Front</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(2,'front')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-back-file-2" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(2,'back')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(2,'back')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Back</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(2,'back')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;margin-top:0.15rem;">
+                                        <input type="text" id="fc-label-2" class="form-input" placeholder="CTA Label" maxlength="40" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <input type="text" id="fc-title-2" class="form-input" placeholder="Subtitle" maxlength="50" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(2)" style="padding:0.2rem 0.5rem;font-size:0.72rem;white-space:nowrap;"><i class="fas fa-check"></i> Save</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="fc-front-url-2"><input type="hidden" id="fc-back-url-2">
                             </div>
 
                             <!-- Card 3 -->
-                            <div class="data-table-container" style="border:2px solid #2e8b5722;border-radius:12px;overflow:hidden;">
-                                <div class="table-header" style="background:#2e8b5718;border-bottom:2px solid #2e8b5733;padding:0.85rem 1.25rem;display:flex;align-items:center;gap:0.6rem;">
-                                    <span style="background:#2e8b57;color:#fff;font-size:0.75rem;font-weight:800;padding:2px 9px;border-radius:20px;">CARD 3</span>
-                                    <span style="font-weight:700;color:var(--text-primary);font-size:1rem;">Flip Card 3</span>
-                                </div>
-                                <div style="padding:1.5rem;">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1rem;">
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-image" style="color:#1e88e5;"></i> Front Image</label>
-                                            <input type="hidden" id="fc-front-url-3">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-front-preview-3" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-front-placeholder-3" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-front-file-3" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(3,'front')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(3,'front')"><i class="fas fa-save"></i> Save Front</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(3,'front')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-redo" style="color:#e64a19;"></i> Back Image</label>
-                                            <input type="hidden" id="fc-back-url-3">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-back-preview-3" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-back-placeholder-3" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-redo" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-back-file-3" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(3,'back')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(3,'back')"><i class="fas fa-save"></i> Save Back</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(3,'back')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
+                            <div style="border:1.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                                <span style="background:#2e8b57;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:12px;flex-shrink:0;">3</span>
+                                <div style="display:flex;gap:0.6rem;align-items:center;flex-shrink:0;">
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-front-preview-3" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-front-placeholder-3" style="color:#bbb;font-size:0.6rem;text-align:center;">Front</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem;">
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-tag"></i> Front CTA Label</label>
-                                            <input type="text" id="fc-label-3" class="form-input" placeholder="Explore now" maxlength="40">
-                                        </div>
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-align-left"></i> Card Subtitle</label>
-                                            <input type="text" id="fc-title-3" class="form-input" placeholder="e.g. Explore now" maxlength="50">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top:0.85rem;">
-                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(3)"><i class="fas fa-check-circle"></i> Save Texts for Card 3</button>
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-back-preview-3" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-back-placeholder-3" style="color:#bbb;font-size:0.6rem;text-align:center;">Back</span>
                                     </div>
                                 </div>
+                                <div style="display:flex;flex-direction:column;gap:0.35rem;flex:1;min-width:200px;">
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-front-file-3" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(3,'front')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(3,'front')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Front</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(3,'front')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-back-file-3" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(3,'back')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(3,'back')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Back</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(3,'back')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;margin-top:0.15rem;">
+                                        <input type="text" id="fc-label-3" class="form-input" placeholder="CTA Label" maxlength="40" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <input type="text" id="fc-title-3" class="form-input" placeholder="Subtitle" maxlength="50" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(3)" style="padding:0.2rem 0.5rem;font-size:0.72rem;white-space:nowrap;"><i class="fas fa-check"></i> Save</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="fc-front-url-3"><input type="hidden" id="fc-back-url-3">
                             </div>
 
                             <!-- Card 4 -->
-                            <div class="data-table-container" style="border:2px solid #7b1fa222;border-radius:12px;overflow:hidden;">
-                                <div class="table-header" style="background:#7b1fa218;border-bottom:2px solid #7b1fa233;padding:0.85rem 1.25rem;display:flex;align-items:center;gap:0.6rem;">
-                                    <span style="background:#7b1fa2;color:#fff;font-size:0.75rem;font-weight:800;padding:2px 9px;border-radius:20px;">CARD 4</span>
-                                    <span style="font-weight:700;color:var(--text-primary);font-size:1rem;">Flip Card 4</span>
-                                </div>
-                                <div style="padding:1.5rem;">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1rem;">
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-image" style="color:#1e88e5;"></i> Front Image</label>
-                                            <input type="hidden" id="fc-front-url-4">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-front-preview-4" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-front-placeholder-4" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-front-file-4" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(4,'front')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(4,'front')"><i class="fas fa-save"></i> Save Front</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(4,'front')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-redo" style="color:#e64a19;"></i> Back Image</label>
-                                            <input type="hidden" id="fc-back-url-4">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-back-preview-4" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-back-placeholder-4" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-redo" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-back-file-4" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(4,'back')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(4,'back')"><i class="fas fa-save"></i> Save Back</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(4,'back')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
+                            <div style="border:1.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                                <span style="background:#7b1fa2;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:12px;flex-shrink:0;">4</span>
+                                <div style="display:flex;gap:0.6rem;align-items:center;flex-shrink:0;">
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-front-preview-4" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-front-placeholder-4" style="color:#bbb;font-size:0.6rem;text-align:center;">Front</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem;">
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-tag"></i> Front CTA Label</label>
-                                            <input type="text" id="fc-label-4" class="form-input" placeholder="Best seller" maxlength="40">
-                                        </div>
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-align-left"></i> Card Subtitle</label>
-                                            <input type="text" id="fc-title-4" class="form-input" placeholder="e.g. Best seller" maxlength="50">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top:0.85rem;">
-                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(4)"><i class="fas fa-check-circle"></i> Save Texts for Card 4</button>
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-back-preview-4" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-back-placeholder-4" style="color:#bbb;font-size:0.6rem;text-align:center;">Back</span>
                                     </div>
                                 </div>
+                                <div style="display:flex;flex-direction:column;gap:0.35rem;flex:1;min-width:200px;">
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-front-file-4" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(4,'front')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(4,'front')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Front</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(4,'front')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-back-file-4" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(4,'back')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(4,'back')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Back</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(4,'back')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;margin-top:0.15rem;">
+                                        <input type="text" id="fc-label-4" class="form-input" placeholder="CTA Label" maxlength="40" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <input type="text" id="fc-title-4" class="form-input" placeholder="Subtitle" maxlength="50" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(4)" style="padding:0.2rem 0.5rem;font-size:0.72rem;white-space:nowrap;"><i class="fas fa-check"></i> Save</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="fc-front-url-4"><input type="hidden" id="fc-back-url-4">
                             </div>
 
                             <!-- Card 5 -->
-                            <div class="data-table-container" style="border:2px solid #c6282822;border-radius:12px;overflow:hidden;">
-                                <div class="table-header" style="background:#c6282818;border-bottom:2px solid #c6282833;padding:0.85rem 1.25rem;display:flex;align-items:center;gap:0.6rem;">
-                                    <span style="background:#c62828;color:#fff;font-size:0.75rem;font-weight:800;padding:2px 9px;border-radius:20px;">CARD 5</span>
-                                    <span style="font-weight:700;color:var(--text-primary);font-size:1rem;">Flip Card 5</span>
-                                </div>
-                                <div style="padding:1.5rem;">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1rem;">
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-image" style="color:#1e88e5;"></i> Front Image</label>
-                                            <input type="hidden" id="fc-front-url-5">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-front-preview-5" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-front-placeholder-5" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-image" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-front-file-5" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(5,'front')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(5,'front')"><i class="fas fa-save"></i> Save Front</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(5,'front')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label" style="font-weight:700;"><i class="fas fa-redo" style="color:#e64a19;"></i> Back Image</label>
-                                            <input type="hidden" id="fc-back-url-5">
-                                            <div style="width:100%;aspect-ratio:3/4;background:#f0f0f0;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;border:1.5px dashed #ccc;">
-                                                <img id="fc-back-preview-5" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                                                <span id="fc-back-placeholder-5" style="color:var(--text-muted);font-size:0.82rem;text-align:center;"><i class="fas fa-redo" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;"></i>No image</span>
-                                            </div>
-                                            <input type="file" id="fc-back-file-5" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(5,'back')" style="margin-bottom:0.5rem;">
-                                            <div style="display:flex;gap:0.5rem;">
-                                                <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(5,'back')"><i class="fas fa-save"></i> Save Back</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(5,'back')"><i class="fas fa-trash"></i> Clear</button>
-                                            </div>
-                                        </div>
+                            <div style="border:1.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                                <span style="background:#c62828;color:#fff;font-size:0.7rem;font-weight:800;padding:2px 8px;border-radius:12px;flex-shrink:0;">5</span>
+                                <div style="display:flex;gap:0.6rem;align-items:center;flex-shrink:0;">
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-front-preview-5" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-front-placeholder-5" style="color:#bbb;font-size:0.6rem;text-align:center;">Front</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem;">
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-tag"></i> Front CTA Label</label>
-                                            <input type="text" id="fc-label-5" class="form-input" placeholder="From ₹999" maxlength="40">
-                                        </div>
-                                        <div>
-                                            <label class="form-label"><i class="fas fa-align-left"></i> Card Subtitle</label>
-                                            <input type="text" id="fc-title-5" class="form-input" placeholder="e.g. Limited time deal" maxlength="50">
-                                        </div>
-                                    </div>
-                                    <div style="margin-top:0.85rem;">
-                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(5)"><i class="fas fa-check-circle"></i> Save Texts for Card 5</button>
+                                    <div style="width:56px;height:72px;background:#f5f5f5;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px dashed #ccc;flex-shrink:0;">
+                                        <img id="fc-back-preview-5" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <span id="fc-back-placeholder-5" style="color:#bbb;font-size:0.6rem;text-align:center;">Back</span>
                                     </div>
                                 </div>
+                                <div style="display:flex;flex-direction:column;gap:0.35rem;flex:1;min-width:200px;">
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-front-file-5" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(5,'front')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(5,'front')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Front</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(5,'front')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <input type="file" id="fc-back-file-5" class="form-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="handleFlipCardFileChange(5,'back')" style="font-size:0.78rem;padding:0.25rem 0.4rem;flex:1;">
+                                        <button class="btn btn-primary btn-sm" onclick="saveFlipCardImage(5,'back')" style="padding:0.2rem 0.5rem;font-size:0.72rem;">Back</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="clearFlipCardImage(5,'back')" style="padding:0.2rem 0.4rem;font-size:0.72rem;"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;margin-top:0.15rem;">
+                                        <input type="text" id="fc-label-5" class="form-input" placeholder="CTA Label" maxlength="40" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <input type="text" id="fc-title-5" class="form-input" placeholder="Subtitle" maxlength="50" style="font-size:0.8rem;padding:0.25rem 0.5rem;flex:1;">
+                                        <button class="btn btn-success btn-sm" onclick="saveFlipCardTexts(5)" style="padding:0.2rem 0.5rem;font-size:0.72rem;white-space:nowrap;"><i class="fas fa-check"></i> Save</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="fc-front-url-5"><input type="hidden" id="fc-back-url-5">
                             </div>
 
                         </div>
