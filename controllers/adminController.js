@@ -1029,6 +1029,8 @@ exports.getDashboardHistory = async (req, res) => {
 
 // Dashboard Statistics
 exports.getDashboardStats = async (req, res) => {
+  try {
+    const orderCountQuery = await db.query('SELECT COUNT(*) as total_orders FROM orders');
 
     // Revenue = only delivered orders (customer actually received the product)
     // Subtract refunded return amounts
