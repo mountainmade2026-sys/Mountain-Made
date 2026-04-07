@@ -909,6 +909,13 @@ const initializeDatabase = async () => {
     // Default categories are no longer auto-inserted.
     // Manage categories manually through the admin panel.
 
+    // Enable Google Pay by default
+    await client.query(`
+      INSERT INTO site_settings (setting_key, setting_value)
+      VALUES ('gpay_enabled', 'true')
+      ON CONFLICT (setting_key) DO UPDATE SET setting_value = 'true';
+    `);
+
     // Insert default homepage section only when the table is empty
     const sectionCountResult = await client.query('SELECT COUNT(*)::int AS count FROM homepage_sections');
     if (sectionCountResult.rows[0].count === 0) {
