@@ -208,6 +208,7 @@ class Order {
   static async findById(id) {
     const query = `
       SELECT o.*, 
+             (SELECT r.status FROM returns r WHERE r.order_id = o.id AND r.status != 'rejected' ORDER BY r.created_at DESC LIMIT 1) AS return_status,
              json_agg(
                json_build_object(
                  'id', oi.id,
@@ -268,6 +269,7 @@ class Order {
   static async findAll(filters = {}) {
     let query = `
       SELECT o.*, u.full_name, u.email, u.phone,
+             (SELECT r.status FROM returns r WHERE r.order_id = o.id AND r.status != 'rejected' ORDER BY r.created_at DESC LIMIT 1) AS return_status,
              COALESCE(
                json_agg(
                  json_build_object(

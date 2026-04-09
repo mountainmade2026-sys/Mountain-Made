@@ -1779,6 +1779,7 @@
                             <option value="processing">Processing</option>
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
+                            <option value="returned">Returned</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
                     </div>
@@ -8343,7 +8344,9 @@
                     (o.full_name || '').toLowerCase().includes(search) || 
                     (o.email || '').toLowerCase().includes(search);
                 
-                const matchStatus = !status || o.status === status;
+                // Derive effective status: if a non-rejected return exists, treat as 'returned'
+                const effectiveStatus = (o.return_status && o.return_status !== 'rejected') ? 'returned' : o.status;
+                const matchStatus = !status || effectiveStatus === status;
                 return matchSearch && matchStatus;
             });
 
@@ -8374,8 +8377,10 @@
                     ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
                     : '<span style="color:var(--text-muted);">—</span>';
 
-                const isFinal = o.status === 'delivered' || o.status === 'cancelled';
-                const isPending = o.status === 'pending';
+                // Derive effective status: if a non-rejected return exists, treat as 'returned'
+                const effectiveStatus = (o.return_status && o.return_status !== 'rejected') ? 'returned' : o.status;
+                const isFinal = effectiveStatus === 'delivered' || effectiveStatus === 'cancelled' || effectiveStatus === 'returned';
+                const isPending = effectiveStatus === 'pending';
                 const actionsHtml = isFinal
                     ? '<span style="color:var(--text-muted);font-size:0.82rem;">—</span>'
                     : isPending
@@ -8405,7 +8410,7 @@
                         <td style="font-size:0.85rem;">${itemsHtml}</td>
                         <td>${formatCurrency(o.total_amount)}</td>
                         <td>${deliveryLabel}</td>
-                        <td><span class="badge badge-${o.status === 'delivered' ? 'success' : o.status === 'cancelled' ? 'danger' : 'warning'}">${o.status}</span></td>
+                        <td><span class="badge badge-${effectiveStatus === 'delivered' ? 'success' : effectiveStatus === 'returned' ? 'info' : effectiveStatus === 'cancelled' ? 'danger' : 'warning'}">${effectiveStatus}</span></td>
                         <td>${formatDate(o.created_at)}</td>
                         <td>${actionsHtml}</td>
                     </tr>
