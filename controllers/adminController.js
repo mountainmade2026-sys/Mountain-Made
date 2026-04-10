@@ -1715,7 +1715,8 @@ exports.updateSiteSettings = async (req, res) => {
       slider_image_4,
       slider_image_5,
       site_notice_text,
-      site_notice_enabled
+      site_notice_enabled,
+      site_notice_color
     } = req.body || {};
 
     const hasLicenseChange =
@@ -1973,6 +1974,13 @@ exports.updateSiteSettings = async (req, res) => {
         ? site_notice_enabled
         : String(site_notice_enabled).toLowerCase() === 'true';
       updates.push({ key: 'site_notice_enabled', value: enabledVal ? 'true' : 'false' });
+    }
+    if (site_notice_color !== undefined) {
+      const colorVal = String(site_notice_color || '').trim();
+      if (colorVal && !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(colorVal)) {
+        return res.status(400).json({ error: 'site_notice_color must be a valid hex colour (e.g. #1a472b).' });
+      }
+      updates.push({ key: 'site_notice_color', value: colorVal || '#1a472b' });
     }
     for (const key of Object.keys(req.body)) {
       if (sectionBannerRe.test(key)) {

@@ -2291,6 +2291,7 @@ function applySiteNoticeBanner(settings) {
 
   const enabled = String(settings.site_notice_enabled || 'false').toLowerCase() === 'true';
   const text = String(settings.site_notice_text || '').trim();
+  const color = String(settings.site_notice_color || '#1a472b').trim();
 
   // Remove existing bar if any
   const existing = document.getElementById(SITE_NOTICE_BAR_ID);
@@ -2305,7 +2306,7 @@ function applySiteNoticeBanner(settings) {
     'position:relative',
     'z-index:10000',
     'width:100%',
-    'background:linear-gradient(90deg,#1a472b 0%,#245c36 60%,#1a472b 100%)',
+    `background:linear-gradient(90deg,${color} 0%,${_lightenHexBanner(color,14)} 50%,${color} 100%)`,
     'color:#fff',
     'padding:0',
     'overflow:hidden',
@@ -2353,6 +2354,16 @@ function applySiteNoticeBanner(settings) {
   } else {
     body.appendChild(bar);
   }
+}
+
+// Slightly lighten a hex colour for gradient midpoint in the notice banner
+function _lightenHexBanner(hex, amount) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return hex;
+  return '#' + [0, 2, 4].map(i => {
+    const v = Math.min(255, parseInt(h.slice(i, i + 2), 16) + amount);
+    return v.toString(16).padStart(2, '0');
+  }).join('');
 }
 
 // Export for use in other scripts

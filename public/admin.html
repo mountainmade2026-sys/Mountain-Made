@@ -2561,6 +2561,24 @@
                             <textarea id="site-notice-text" class="form-textarea" rows="3" maxlength="400" placeholder="e.g. ⚠️ Due to heavy rainfall in the region, deliveries may be delayed by 1–2 days. We apologise for the inconvenience."></textarea>
                             <small style="color: var(--text-muted); display:block; margin-top:0.35rem;">Max 400 characters. Emojis are supported. The text scrolls as a ticker across all pages.</small>
                         </div>
+                        <div class="form-group" style="max-width: 680px; margin-bottom: 1rem;">
+                            <label class="form-label"><i class="fas fa-palette" style="margin-right:5px;color:var(--primary)"></i>Notice Bar Background Colour</label>
+                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.55rem; align-items:center;">
+                                <button type="button" class="notice-color-swatch" data-color="#1a472b" title="Forest Green (Default)" onclick="_setNoticeColor('#1a472b',this)" style="background:#1a472b;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#7f1d1d" title="Dark Red — Emergency" onclick="_setNoticeColor('#7f1d1d',this)" style="background:#7f1d1d;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#78350f" title="Dark Amber — Warning" onclick="_setNoticeColor('#78350f',this)" style="background:#78350f;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#b45309" title="Dark Orange" onclick="_setNoticeColor('#b45309',this)" style="background:#b45309;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#1e3a5f" title="Dark Navy Blue" onclick="_setNoticeColor('#1e3a5f',this)" style="background:#1e3a5f;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#4c1d95" title="Dark Purple" onclick="_setNoticeColor('#4c1d95',this)" style="background:#4c1d95;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#0f766e" title="Teal" onclick="_setNoticeColor('#0f766e',this)" style="background:#0f766e;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <button type="button" class="notice-color-swatch" data-color="#111827" title="Charcoal Black" onclick="_setNoticeColor('#111827',this)" style="background:#111827;width:34px;height:34px;border-radius:7px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;"></button>
+                                <label title="Custom colour" style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-muted);cursor:pointer;flex-shrink:0;">
+                                    <input type="color" id="site-notice-color" value="#1a472b" style="width:38px;height:34px;padding:2px 3px;border-radius:7px;border:2px solid var(--border);cursor:pointer;" oninput="_setNoticeColor(this.value,null)">
+                                    <span>Custom</span>
+                                </label>
+                            </div>
+                            <small style="color:var(--text-muted);">Select a preset colour or pick any custom hex colour. Text is always white for readability.</small>
+                        </div>
                         <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
                             <label class="form-label" style="margin:0; display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
                                 <input type="checkbox" id="site-notice-enabled" style="width:auto; accent-color:var(--primary); width:18px; height:18px;">
@@ -2576,7 +2594,7 @@
                             </button>
                         </div>
                         <div id="site-notice-live-preview" style="display:none; margin-top:1.25rem; border-radius:6px; overflow:hidden;">
-                            <div style="background:#1a472b; color:#fff; padding:0.5rem 0; font-size:0.88rem; font-weight:500; white-space:nowrap; overflow:hidden;">
+                            <div id="site-notice-preview-bar" style="background:#1a472b; color:#fff; padding:0.5rem 0; font-size:0.88rem; font-weight:500; white-space:nowrap; overflow:hidden;">
                                 <div id="site-notice-preview-text" style="display:inline-block; padding-left:100%; animation: noticeScroll 18s linear infinite;">—</div>
                             </div>
                             <small style="color:var(--text-muted); display:block; margin-top:0.4rem; font-style:italic;">Preview of the scrolling notice bar</small>
@@ -6982,8 +7000,22 @@
                 // Populate site notice settings
                 const siteNoticeTextEl = document.getElementById('site-notice-text');
                 const siteNoticeEnabledEl = document.getElementById('site-notice-enabled');
+                const siteNoticeColorEl = document.getElementById('site-notice-color');
                 if (siteNoticeTextEl) siteNoticeTextEl.value = settings.site_notice_text || '';
                 if (siteNoticeEnabledEl) siteNoticeEnabledEl.checked = String(settings.site_notice_enabled || 'false').toLowerCase() === 'true';
+                const savedColor = settings.site_notice_color || '#1a472b';
+                if (siteNoticeColorEl) siteNoticeColorEl.value = savedColor;
+                // Highlight the matching preset swatch if any
+                document.querySelectorAll('.notice-color-swatch').forEach(s => {
+                    s.style.borderColor = 'transparent';
+                    s.style.transform = 'scale(1)';
+                    s.style.boxShadow = '';
+                    if (s.dataset.color === savedColor.toLowerCase()) {
+                        s.style.borderColor = '#fff';
+                        s.style.transform = 'scale(1.18)';
+                        s.style.boxShadow = '0 0 0 2px ' + savedColor;
+                    }
+                });
                 _updateNoticePreview();
 
                 await loadAdminAccountSettings();
@@ -7774,30 +7806,65 @@
         function _updateNoticePreview() {
             const textEl = document.getElementById('site-notice-text');
             const enabledEl = document.getElementById('site-notice-enabled');
+            const colorEl = document.getElementById('site-notice-color');
             const previewWrap = document.getElementById('site-notice-live-preview');
             const previewText = document.getElementById('site-notice-preview-text');
+            const previewBar = document.getElementById('site-notice-preview-bar');
             const text = (textEl?.value || '').trim();
             const enabled = enabledEl?.checked;
+            const color = (colorEl?.value || '#1a472b');
             if (!previewWrap || !previewText) return;
             if (text && enabled) {
                 previewText.textContent = text + '\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0' + text;
+                if (previewBar) {
+                    previewBar.style.background = `linear-gradient(90deg, ${color} 0%, ${_lightenHex(color, 12)} 50%, ${color} 100%)`;
+                }
                 previewWrap.style.display = 'block';
             } else {
                 previewWrap.style.display = 'none';
             }
         }
+        // Helper: slightly lighten a hex colour for the gradient midpoint
+        function _lightenHex(hex, amount) {
+            const h = hex.replace('#', '');
+            if (h.length !== 6) return hex;
+            return '#' + [0, 2, 4].map(i => {
+                const v = Math.min(255, parseInt(h.slice(i, i + 2), 16) + amount);
+                return v.toString(16).padStart(2, '0');
+            }).join('');
+        }
+        // Called by swatch buttons and colour input
+        window._setNoticeColor = function(color, swatchEl) {
+            const colorInput = document.getElementById('site-notice-color');
+            if (colorInput) colorInput.value = color;
+            // Highlight active swatch
+            document.querySelectorAll('.notice-color-swatch').forEach(s => {
+                s.style.borderColor = 'transparent';
+                s.style.transform = 'scale(1)';
+            });
+            if (swatchEl) {
+                swatchEl.style.borderColor = '#fff';
+                swatchEl.style.transform = 'scale(1.18)';
+                swatchEl.style.boxShadow = '0 0 0 2px ' + color;
+            }
+            _updateNoticePreview();
+        };
         document.addEventListener('DOMContentLoaded', function() {
             const noticeTextEl = document.getElementById('site-notice-text');
             const noticeEnabledEl = document.getElementById('site-notice-enabled');
+            const noticeColorEl = document.getElementById('site-notice-color');
             if (noticeTextEl) noticeTextEl.addEventListener('input', _updateNoticePreview);
             if (noticeEnabledEl) noticeEnabledEl.addEventListener('change', _updateNoticePreview);
+            if (noticeColorEl) noticeColorEl.addEventListener('input', _updateNoticePreview);
         });
 
         window.saveSiteNotice = async function() {
             const textEl = document.getElementById('site-notice-text');
             const enabledEl = document.getElementById('site-notice-enabled');
+            const colorEl = document.getElementById('site-notice-color');
             const text = (textEl?.value || '').trim();
             const enabled = enabledEl?.checked ? 'true' : 'false';
+            const color = (colorEl?.value || '#1a472b');
             if (!text) {
                 showAlert('Please enter a notice message before saving.', 'error');
                 return;
@@ -7805,7 +7872,8 @@
             try {
                 const resp = await api.post('/admin/settings', {
                     site_notice_text: text,
-                    site_notice_enabled: enabled
+                    site_notice_enabled: enabled,
+                    site_notice_color: color
                 });
                 if (resp && (resp.success || resp.message)) {
                     showAlert('Site notice saved and ' + (enabled === 'true' ? 'enabled' : 'disabled') + ' successfully!', 'success');
