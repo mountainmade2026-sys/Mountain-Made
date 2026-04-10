@@ -1713,7 +1713,9 @@ exports.updateSiteSettings = async (req, res) => {
       slider_image_2,
       slider_image_3,
       slider_image_4,
-      slider_image_5
+      slider_image_5,
+      site_notice_text,
+      site_notice_enabled
     } = req.body || {};
 
     const hasLicenseChange =
@@ -1961,6 +1963,17 @@ exports.updateSiteSettings = async (req, res) => {
     // Accepts new single-object format {url, shape} OR legacy array-of-URLs format OR 'null'/'null'
     const sectionBannerRe = /^section_(pc|mobile)_banners_(\d+)$/;
     const validBannerShapes = ['full', 'circle', 'rectangle', 'square', 'triangle', 'star'];
+
+    // Site notice / situation reason banner
+    if (site_notice_text !== undefined) {
+      updates.push({ key: 'site_notice_text', value: String(site_notice_text || '').trim().slice(0, 400) });
+    }
+    if (site_notice_enabled !== undefined) {
+      const enabledVal = typeof site_notice_enabled === 'boolean'
+        ? site_notice_enabled
+        : String(site_notice_enabled).toLowerCase() === 'true';
+      updates.push({ key: 'site_notice_enabled', value: enabledVal ? 'true' : 'false' });
+    }
     for (const key of Object.keys(req.body)) {
       if (sectionBannerRe.test(key)) {
         const rawVal = String(req.body[key] || '').trim();

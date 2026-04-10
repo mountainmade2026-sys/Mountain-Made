@@ -1050,6 +1050,7 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes noticeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
         /* ═══════ UPLOAD AREA ═══════ */
         .upload-area {
@@ -2546,6 +2547,43 @@
                     </div>
                 </div>
 
+                <!-- Site Notice / Situation Banner -->
+                <div id="ss-sub-notice" class="data-table-container" style="margin-top: 1.5rem;">
+                    <div class="table-header">
+                        <h3><i class="fas fa-bullhorn"></i> Site Notice / Situation Reason</h3>
+                    </div>
+                    <div style="padding: 2rem;">
+                        <p style="color: var(--text-muted); margin-bottom: 1.25rem;">
+                            Display a scrolling notice bar at the top of every page to inform customers about delivery delays, server issues, local situations, or any important update. When enabled, it appears above the navigation bar on all public pages.
+                        </p>
+                        <div class="form-group" style="max-width: 680px; margin-bottom: 1rem;">
+                            <label class="form-label" for="site-notice-text"><i class="fas fa-pencil-alt" style="margin-right:5px;color:var(--primary)"></i>Notice Message</label>
+                            <textarea id="site-notice-text" class="form-textarea" rows="3" maxlength="400" placeholder="e.g. ⚠️ Due to heavy rainfall in the region, deliveries may be delayed by 1–2 days. We apologise for the inconvenience."></textarea>
+                            <small style="color: var(--text-muted); display:block; margin-top:0.35rem;">Max 400 characters. Emojis are supported. The text scrolls as a ticker across all pages.</small>
+                        </div>
+                        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+                            <label class="form-label" style="margin:0; display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                                <input type="checkbox" id="site-notice-enabled" style="width:auto; accent-color:var(--primary); width:18px; height:18px;">
+                                <span>Enable notice bar (show on all public pages)</span>
+                            </label>
+                        </div>
+                        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                            <button class="btn btn-primary" onclick="saveSiteNotice()">
+                                <i class="fas fa-save"></i> Save &amp; Enable Notice
+                            </button>
+                            <button class="btn btn-danger" onclick="disableSiteNotice()">
+                                <i class="fas fa-times-circle"></i> Disable Notice
+                            </button>
+                        </div>
+                        <div id="site-notice-live-preview" style="display:none; margin-top:1.25rem; border-radius:6px; overflow:hidden;">
+                            <div style="background:#1a472b; color:#fff; padding:0.5rem 0; font-size:0.88rem; font-weight:500; white-space:nowrap; overflow:hidden;">
+                                <div id="site-notice-preview-text" style="display:inline-block; padding-left:100%; animation: noticeScroll 18s linear infinite;">—</div>
+                            </div>
+                            <small style="color:var(--text-muted); display:block; margin-top:0.4rem; font-style:italic;">Preview of the scrolling notice bar</small>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- COD Availability Section -->
                 <div id="ss-sub-cod" class="data-table-container" style="margin-top: 1.5rem;">
                     <div class="table-header">
@@ -3827,7 +3865,8 @@
                 { id: 'ss-sub-contact',   label: 'Contact Info' },
                 { id: 'ss-sub-email',     label: 'Business Email' },
                 { id: 'ss-sub-gpay',      label: 'Google Pay' },
-                { id: 'ss-sub-cod',       label: 'COD Pincodes' }
+                { id: 'ss-sub-cod',       label: 'COD Pincodes' },
+                { id: 'ss-sub-notice',    label: 'Site Notice' }
             ].filter(function(s) {
                 var el = document.getElementById(s.id);
                 return !!el && el.style.display !== 'none';
@@ -6940,6 +6979,13 @@
                     refreshAllSavedBanners();
                 } catch(e) { console.warn('Could not load sections for banner selector', e); }
 
+                // Populate site notice settings
+                const siteNoticeTextEl = document.getElementById('site-notice-text');
+                const siteNoticeEnabledEl = document.getElementById('site-notice-enabled');
+                if (siteNoticeTextEl) siteNoticeTextEl.value = settings.site_notice_text || '';
+                if (siteNoticeEnabledEl) siteNoticeEnabledEl.checked = String(settings.site_notice_enabled || 'false').toLowerCase() === 'true';
+                _updateNoticePreview();
+
                 await loadAdminAccountSettings();
             } catch (error) {
                 console.error('Load site settings error:', error);
@@ -7721,6 +7767,70 @@
             } catch (error) {
                 console.error('Save COD pincode settings error:', error);
                 showAlert(error.message || 'Failed to save COD pincode settings', 'error');
+            }
+        };
+
+        /* ── Site Notice / Situation Banner ── */
+        function _updateNoticePreview() {
+            const textEl = document.getElementById('site-notice-text');
+            const enabledEl = document.getElementById('site-notice-enabled');
+            const previewWrap = document.getElementById('site-notice-live-preview');
+            const previewText = document.getElementById('site-notice-preview-text');
+            const text = (textEl?.value || '').trim();
+            const enabled = enabledEl?.checked;
+            if (!previewWrap || !previewText) return;
+            if (text && enabled) {
+                previewText.textContent = text + '\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0' + text;
+                previewWrap.style.display = 'block';
+            } else {
+                previewWrap.style.display = 'none';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const noticeTextEl = document.getElementById('site-notice-text');
+            const noticeEnabledEl = document.getElementById('site-notice-enabled');
+            if (noticeTextEl) noticeTextEl.addEventListener('input', _updateNoticePreview);
+            if (noticeEnabledEl) noticeEnabledEl.addEventListener('change', _updateNoticePreview);
+        });
+
+        window.saveSiteNotice = async function() {
+            const textEl = document.getElementById('site-notice-text');
+            const enabledEl = document.getElementById('site-notice-enabled');
+            const text = (textEl?.value || '').trim();
+            const enabled = enabledEl?.checked ? 'true' : 'false';
+            if (!text) {
+                showAlert('Please enter a notice message before saving.', 'error');
+                return;
+            }
+            try {
+                const resp = await api.post('/admin/settings', {
+                    site_notice_text: text,
+                    site_notice_enabled: enabled
+                });
+                if (resp && (resp.success || resp.message)) {
+                    showAlert('Site notice saved and ' + (enabled === 'true' ? 'enabled' : 'disabled') + ' successfully!', 'success');
+                    _updateNoticePreview();
+                } else {
+                    throw new Error(resp?.error || 'Failed to save site notice');
+                }
+            } catch (err) {
+                showAlert(err.message || 'Failed to save site notice', 'error');
+            }
+        };
+
+        window.disableSiteNotice = async function() {
+            try {
+                const resp = await api.post('/admin/settings', { site_notice_enabled: 'false' });
+                if (resp && (resp.success || resp.message)) {
+                    const enabledEl = document.getElementById('site-notice-enabled');
+                    if (enabledEl) enabledEl.checked = false;
+                    _updateNoticePreview();
+                    showAlert('Site notice has been disabled. The banner is now hidden on all pages.', 'success');
+                } else {
+                    throw new Error(resp?.error || 'Failed to disable site notice');
+                }
+            } catch (err) {
+                showAlert(err.message || 'Failed to disable site notice', 'error');
             }
         };
 

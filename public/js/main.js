@@ -2242,6 +2242,9 @@ async function loadSiteLogo() {
 
       // Apply dynamic footer contact info
       applyFooterContact(settings);
+
+      // Apply site notice / situation banner
+      applySiteNoticeBanner(settings);
     }
   } catch (error) {
     // Silently fail - keep default logo
@@ -2276,6 +2279,79 @@ function applyFooterContact(settings) {
   if (locationEl) {
     if (location) { locationEl.textContent = location; locationEl.parentElement.style.display = ''; }
     else { locationEl.parentElement.style.display = 'none'; }
+  }
+}
+
+// ── Site Notice / Situation Reason Banner ─────────────────────────────────
+const SITE_NOTICE_BAR_ID = 'site-notice-ticker-bar';
+
+function applySiteNoticeBanner(settings) {
+  // Only show on public-facing pages, not on admin dashboard
+  if (window.location.pathname.startsWith('/admin')) return;
+
+  const enabled = String(settings.site_notice_enabled || 'false').toLowerCase() === 'true';
+  const text = String(settings.site_notice_text || '').trim();
+
+  // Remove existing bar if any
+  const existing = document.getElementById(SITE_NOTICE_BAR_ID);
+  if (existing) existing.remove();
+
+  if (!enabled || !text) return;
+
+  // Build the banner
+  const bar = document.createElement('div');
+  bar.id = SITE_NOTICE_BAR_ID;
+  bar.style.cssText = [
+    'position:relative',
+    'z-index:10000',
+    'width:100%',
+    'background:linear-gradient(90deg,#1a472b 0%,#245c36 60%,#1a472b 100%)',
+    'color:#fff',
+    'padding:0',
+    'overflow:hidden',
+    'border-bottom:2px solid rgba(255,255,255,0.15)',
+    'box-shadow:0 2px 8px rgba(0,0,0,0.18)',
+    'height:34px',
+    'display:flex',
+    'align-items:center',
+  ].join(';');
+
+  // Inner scrolling track
+  const track = document.createElement('div');
+  track.style.cssText = [
+    'display:flex',
+    'align-items:center',
+    'white-space:nowrap',
+    'will-change:transform',
+    'animation:siteNoticeTicker 28s linear infinite',
+    'font-size:0.84rem',
+    'font-weight:600',
+    'letter-spacing:0.01em',
+    'padding:0 1rem',
+    'gap:3rem',
+  ].join(';');
+
+  // Repeat text 4 times for seamless loop
+  const icon = '\u26a0\ufe0f\u00a0';
+  const spacer = '\u00a0\u00a0\u00a0\u00a0\u2022\u00a0\u00a0\u00a0\u00a0';
+  const fullText = icon + text;
+  track.textContent = [fullText, fullText, fullText, fullText].join(spacer);
+  bar.appendChild(track);
+
+  // Inject keyframe style once
+  if (!document.getElementById('_site-notice-style')) {
+    const style = document.createElement('style');
+    style.id = '_site-notice-style';
+    style.textContent = '@keyframes siteNoticeTicker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}';
+    document.head.appendChild(style);
+  }
+
+  // Insert before <body>'s first child (above everything incl. navbar)
+  const body = document.body;
+  if (body.firstChild) {
+    body.insertBefore(bar, body.firstChild);
+  } else {
+    body.appendChild(bar);
   }
 }
 
