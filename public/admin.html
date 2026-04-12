@@ -778,6 +778,8 @@
 
         .action-btn-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.22); }
         .action-btn-success:hover { background: var(--success); color: #fff; }
+        .action-btn-primary { background: rgba(26,71,49,0.08); color: var(--primary); border: 1px solid rgba(26,71,49,0.22); }
+        .action-btn-primary:hover { background: var(--primary); color: #fff; }
 
         .action-btn-reject  { background: var(--danger-bg);  color: var(--danger);  border: 1px solid rgba(239,68,68,0.2); }
         .action-btn-reject:hover  { background: var(--danger); color: #fff; }
@@ -966,6 +968,44 @@
         #contact-message-modal .modal-header { padding: 0.9rem 1rem; }
         #contact-message-modal .modal-body { padding: 1rem; display: grid; gap: 0.65rem; }
         #contact-message-modal .modal-footer { padding: 0.85rem 1rem; justify-content: space-between; }
+
+        /* ═══════ CUSTOMER HISTORY MODAL ═══════ */
+        #ch-modal { align-items: flex-start; justify-content: center; padding: 1.5rem; overflow-y: auto; }
+        #ch-modal .modal-content {
+            max-width: min(1140px, 100%); width: min(1140px, 100%);
+            height: auto; max-height: none;
+            margin: auto;
+        }
+        .ch-customer-bar { display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1.5rem; border-bottom: 1px solid var(--border); background: var(--bg); border-radius: 0; flex-wrap: wrap; }
+        .ch-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+        .ch-customer-info { flex: 1; min-width: 0; }
+        .ch-customer-name { font-size: 1rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ch-customer-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.1rem; }
+        .ch-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border); }
+        .ch-stat { text-align: center; }
+        .ch-stat-val { font-size: 1.3rem; font-weight: 800; color: var(--primary); }
+        .ch-stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+        .ch-filters-bar { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; padding: 0.9rem 1.5rem; border-bottom: 1px solid var(--border); background: var(--bg); }
+        .ch-filters-bar input, .ch-filters-bar select {
+            padding: 0.42rem 0.65rem; border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 0.83rem; background: var(--bg-card); color: var(--text);
+            min-width: 0; transition: border-color 0.15s;
+        }
+        .ch-filters-bar input:focus, .ch-filters-bar select:focus { outline: none; border-color: var(--primary); }
+        .ch-filters-bar input[type=text] { flex: 1; min-width: 140px; }
+        .ch-export-btn { margin-left: auto; }
+        .ch-table-wrap { padding: 1.1rem 1.5rem 1.5rem; overflow-x: auto; }
+        .ch-order-row td { vertical-align: top; }
+        .ch-items-list { margin: 0; padding: 0; list-style: none; }
+        .ch-items-list li { font-size: 0.8rem; color: var(--text-muted); padding: 0.1rem 0; white-space: nowrap; }
+        .ch-items-list li strong { color: var(--text); }
+        .ch-empty { padding: 3rem 1.5rem; text-align: center; color: var(--text-muted); }
+        .ch-empty i { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
+        #ch-result-count { font-size: 0.82rem; color: var(--text-muted); padding: 0.4rem 1.5rem 0; }
+        @media (max-width: 700px) {
+            .ch-stats-row { grid-template-columns: repeat(2, 1fr); }
+            .ch-filters-bar { gap: 0.4rem; }
+        }
 
         /* ═══════ FORMS ═══════ */
         .form-group { margin-bottom: 1.2rem; }
@@ -1844,6 +1884,16 @@
             <div id="customers" class="section">
                 <div class="admin-header">
                     <h1><i class="fas fa-users"></i> Customers</h1>
+                    <div class="admin-controls">
+                        <div class="search-box">
+                            <input type="text" id="customers-search" placeholder="Search by name, email, phone..." oninput="filterCustomersList()">
+                        </div>
+                        <select class="filter-select" id="customers-role-filter" onchange="filterCustomersList()">
+                            <option value="">All Roles</option>
+                            <option value="customer">Customer</option>
+                            <option value="wholesale">Wholesale</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="customers-list"></div>
             </div>
@@ -3561,6 +3611,54 @@
                         <button class="modal-close" onclick="closeStockHistoryModal()">&times;</button>
                     </div>
                     <div id="stock-history-body" class="modal-body"></div>
+                </div>
+            </div>
+
+            <!-- Customer Purchase History Modal -->
+            <div id="ch-modal" class="modal">
+                <div class="modal-content modal-content-xl">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-history"></i> Purchase History</h2>
+                        <button class="modal-close" onclick="closeCustomerHistoryModal()">&times;</button>
+                    </div>
+                    <!-- Customer info bar -->
+                    <div class="ch-customer-bar">
+                        <div class="ch-avatar" id="ch-avatar">?</div>
+                        <div class="ch-customer-info">
+                            <div class="ch-customer-name" id="ch-cust-name">—</div>
+                            <div class="ch-customer-meta" id="ch-cust-meta">—</div>
+                        </div>
+                        <span id="ch-cust-role-badge" class="badge"></span>
+                    </div>
+                    <!-- Stats -->
+                    <div class="ch-stats-row">
+                        <div class="ch-stat"><div class="ch-stat-val" id="ch-stat-orders">0</div><div class="ch-stat-label">Total Orders</div></div>
+                        <div class="ch-stat"><div class="ch-stat-val" id="ch-stat-items">0</div><div class="ch-stat-label">Items Purchased</div></div>
+                        <div class="ch-stat"><div class="ch-stat-val" id="ch-stat-spent">₹0</div><div class="ch-stat-label">Total Spent</div></div>
+                        <div class="ch-stat"><div class="ch-stat-val" id="ch-stat-since">—</div><div class="ch-stat-label">Member Since</div></div>
+                    </div>
+                    <!-- Filters -->
+                    <div class="ch-filters-bar">
+                        <input type="text" id="ch-search" placeholder="Search order # or product…" oninput="applyChFilters()">
+                        <input type="date" id="ch-date-from" title="From date" onchange="applyChFilters()">
+                        <input type="date" id="ch-date-to" title="To date" onchange="applyChFilters()">
+                        <select id="ch-year-filter" onchange="applyChFilters()"><option value="">All Years</option></select>
+                        <select id="ch-status-filter" onchange="applyChFilters()">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" onclick="resetChFilters()"><i class="fas fa-undo"></i> Reset</button>
+                        <button class="btn btn-primary btn-sm ch-export-btn" onclick="exportChCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
+                    </div>
+                    <div id="ch-result-count"></div>
+                    <!-- Table -->
+                    <div class="ch-table-wrap">
+                        <div id="ch-table-body"></div>
+                    </div>
                 </div>
             </div>
 
@@ -6629,33 +6727,257 @@
                 const resp = await api.get('/admin/customers');
                 const customers = resp.customers || [];
                 window._customersCache = customers;
-
-                if (!customers.length) {
-                    document.getElementById('customers-list').innerHTML = '<div class="empty-state"><p>No customers found</p></div>';
-                    return;
-                }
-
-                let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Orders</th><th>Total Spent</th><th>Joined</th></tr></thead><tbody>';
-                customers.forEach(c => {
-                    html += `
-                        <tr>
-                            <td>${c.full_name}</td>
-                            <td>${c.email}</td>
-                            <td>${c.phone || '-'}</td>
-                            <td>${c.role}</td>
-                            <td>${c.total_orders}</td>
-                            <td>${formatCurrency(c.total_spent)}</td>
-                            <td>${formatDate(c.created_at)}</td>
-                        </tr>
-                    `;
-                });
-                html += '</tbody></table></div>';
-                document.getElementById('customers-list').innerHTML = html;
+                renderCustomersList(customers);
             } catch (error) {
                 console.error('Load customers error:', error);
                 document.getElementById('customers-list').innerHTML = '<div class="empty-state"><p>Error loading customers</p></div>';
             }
         }
+
+        function renderCustomersList(customers) {
+            const container = document.getElementById('customers-list');
+            if (!customers.length) {
+                container.innerHTML = '<div class="empty-state"><p>No customers found</p></div>';
+                return;
+            }
+            let html = '<div class="data-table-container"><table class="data-table"><thead><tr>' +
+                '<th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Orders</th><th>Total Spent</th><th>Joined</th><th>Actions</th>' +
+                '</tr></thead><tbody>';
+            customers.forEach(c => {
+                const roleBadge = c.role === 'wholesale'
+                    ? '<span class="badge badge-warning">Wholesale</span>'
+                    : '<span class="badge badge-secondary">Customer</span>';
+                html += `<tr>
+                    <td style="font-weight:600;">${escapeHtml(c.full_name || '—')}</td>
+                    <td>${escapeHtml(c.email)}</td>
+                    <td>${escapeHtml(c.phone || '—')}</td>
+                    <td>${roleBadge}</td>
+                    <td><strong>${c.total_orders}</strong></td>
+                    <td>${formatCurrency(c.total_spent)}</td>
+                    <td>${formatDate(c.created_at)}</td>
+                    <td>
+                        <button class="action-btn action-btn-primary" onclick="openCustomerHistory(${c.id})">
+                            <i class="fas fa-history"></i> View History
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        window.filterCustomersList = function() {
+            const q = (document.getElementById('customers-search')?.value || '').trim().toLowerCase();
+            const role = document.getElementById('customers-role-filter')?.value || '';
+            let list = window._customersCache || [];
+            if (q) list = list.filter(c =>
+                (c.full_name || '').toLowerCase().includes(q) ||
+                (c.email || '').toLowerCase().includes(q) ||
+                (c.phone || '').toLowerCase().includes(q)
+            );
+            if (role) list = list.filter(c => c.role === role);
+            renderCustomersList(list);
+        };
+
+        // ── Customer History Modal ──────────────────────────────────
+        window._chAllOrders = [];
+        window._chCustomer = null;
+
+        window.openCustomerHistory = async function(customerId) {
+            const modal = document.getElementById('ch-modal');
+            if (!modal) return;
+            modal.classList.add('show');
+
+            // Reset UI
+            document.getElementById('ch-table-body').innerHTML = '<div class="ch-empty"><i class="fas fa-spinner fa-spin"></i><p>Loading history…</p></div>';
+            document.getElementById('ch-result-count').textContent = '';
+            ['ch-stat-orders','ch-stat-items','ch-stat-spent','ch-stat-since'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.textContent = '—';
+            });
+
+            try {
+                const data = await api.get(`/admin/customers/${customerId}`);
+                const customer = data.customer || {};
+                const orders = data.orders || [];
+                window._chCustomer = customer;
+                window._chAllOrders = orders;
+
+                // Populate customer bar
+                const initials = (customer.full_name || customer.email || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+                document.getElementById('ch-avatar').textContent = initials;
+                document.getElementById('ch-cust-name').textContent = customer.full_name || customer.email;
+                document.getElementById('ch-cust-meta').textContent =
+                    `${customer.email}${customer.phone ? ' · ' + customer.phone : ''}${customer.business_name ? ' · ' + customer.business_name : ''}`;
+                const roleBadgeEl = document.getElementById('ch-cust-role-badge');
+                roleBadgeEl.textContent = customer.role;
+                roleBadgeEl.className = 'badge ' + (customer.role === 'wholesale' ? 'badge-warning' : 'badge-secondary');
+
+                // Stats
+                const totalItems = orders.reduce((s, o) => s + (o.items || []).reduce((si, i) => si + parseInt(i.quantity || 0, 10), 0), 0);
+                const totalSpent = orders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0);
+                document.getElementById('ch-stat-orders').textContent = orders.length;
+                document.getElementById('ch-stat-items').textContent = totalItems;
+                document.getElementById('ch-stat-spent').textContent = formatCurrency(totalSpent);
+                document.getElementById('ch-stat-since').textContent = formatDate(customer.created_at);
+
+                // Populate year filter
+                const years = [...new Set(orders.map(o => new Date(o.created_at).getFullYear()))].sort((a,b)=>b-a);
+                const yearSel = document.getElementById('ch-year-filter');
+                yearSel.innerHTML = '<option value="">All Years</option>' +
+                    years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+                // Reset filters
+                ['ch-search','ch-date-from','ch-date-to'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+                document.getElementById('ch-status-filter').value = '';
+
+                applyChFilters();
+            } catch (err) {
+                console.error('Customer history error:', err);
+                document.getElementById('ch-table-body').innerHTML = '<div class="ch-empty"><i class="fas fa-exclamation-circle"></i><p>Failed to load history.</p></div>';
+            }
+        };
+
+        window.closeCustomerHistoryModal = function() {
+            document.getElementById('ch-modal')?.classList.remove('show');
+            window._chAllOrders = [];
+            window._chCustomer = null;
+        };
+
+        document.getElementById('ch-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeCustomerHistoryModal();
+        });
+
+        window.applyChFilters = function() {
+            const q = (document.getElementById('ch-search')?.value || '').trim().toLowerCase();
+            const from = document.getElementById('ch-date-from')?.value || '';
+            const to = document.getElementById('ch-date-to')?.value || '';
+            const year = document.getElementById('ch-year-filter')?.value || '';
+            const status = document.getElementById('ch-status-filter')?.value || '';
+
+            let orders = window._chAllOrders || [];
+
+            if (q) {
+                orders = orders.filter(o =>
+                    String(o.id).includes(q) ||
+                    (o.items || []).some(i => (i.product_name || '').toLowerCase().includes(q))
+                );
+            }
+            if (from) orders = orders.filter(o => new Date(o.created_at) >= new Date(from));
+            if (to) {
+                const toDate = new Date(to); toDate.setHours(23,59,59,999);
+                orders = orders.filter(o => new Date(o.created_at) <= toDate);
+            }
+            if (year) orders = orders.filter(o => new Date(o.created_at).getFullYear() === parseInt(year));
+            if (status) orders = orders.filter(o => o.status === status);
+
+            const countEl = document.getElementById('ch-result-count');
+            if (countEl) countEl.textContent = `Showing ${orders.length} of ${window._chAllOrders.length} orders`;
+
+            renderChTable(orders);
+        };
+
+        window.resetChFilters = function() {
+            ['ch-search','ch-date-from','ch-date-to'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+            document.getElementById('ch-year-filter').value = '';
+            document.getElementById('ch-status-filter').value = '';
+            applyChFilters();
+        };
+
+        function renderChTable(orders) {
+            const container = document.getElementById('ch-table-body');
+            if (!orders.length) {
+                container.innerHTML = '<div class="ch-empty"><i class="fas fa-box-open"></i><p>No orders match the current filters.</p></div>';
+                return;
+            }
+
+            const statusClass = s => ({
+                pending:'badge-warning', processing:'badge-info',
+                shipped:'badge-secondary', delivered:'badge-success', cancelled:'badge-danger'
+            }[s] || 'badge-secondary');
+
+            let html = '<div class="data-table-container"><table class="data-table">' +
+                '<thead><tr>' +
+                '<th>Order #</th><th>Date &amp; Time</th><th>Products Purchased</th>' +
+                '<th>Payment</th><th>Status</th><th style="text-align:right">Amount</th>' +
+                '</tr></thead><tbody>';
+
+            orders.forEach(o => {
+                const dt = new Date(o.created_at);
+                const dateStr = dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+                const timeStr = dt.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+                const itemsHtml = (o.items || []).map(i =>
+                    `<li><strong>${escapeHtml(i.product_name)}</strong> &times; ${i.quantity} <span style="color:var(--text-muted);">(${formatCurrency(i.subtotal)})</span></li>`
+                ).join('');
+                const payment = (o.payment_method || 'N/A').replace(/_/g,' ');
+                html += `<tr class="ch-order-row">
+                    <td><strong>#${o.id}</strong></td>
+                    <td><div style="font-weight:600;font-size:0.88rem;">${dateStr}</div><div style="font-size:0.78rem;color:var(--text-muted);">${timeStr}</div></td>
+                    <td><ul class="ch-items-list">${itemsHtml || '<li>—</li>'}</ul></td>
+                    <td style="font-size:0.85rem;text-transform:capitalize;">${escapeHtml(payment)}</td>
+                    <td><span class="badge ${statusClass(o.status)}">${escapeHtml(o.status || '—')}</span></td>
+                    <td style="text-align:right;font-weight:700;">${formatCurrency(o.total_amount)}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        window.exportChCSV = function() {
+            const orders = window._chAllOrders || [];
+            const customer = window._chCustomer || {};
+
+            // Apply current filters to get the filtered set
+            const q = (document.getElementById('ch-search')?.value || '').trim().toLowerCase();
+            const from = document.getElementById('ch-date-from')?.value || '';
+            const to = document.getElementById('ch-date-to')?.value || '';
+            const year = document.getElementById('ch-year-filter')?.value || '';
+            const status = document.getElementById('ch-status-filter')?.value || '';
+
+            let filtered = orders;
+            if (q) filtered = filtered.filter(o => String(o.id).includes(q) || (o.items||[]).some(i=>(i.product_name||'').toLowerCase().includes(q)));
+            if (from) filtered = filtered.filter(o => new Date(o.created_at) >= new Date(from));
+            if (to) { const d = new Date(to); d.setHours(23,59,59,999); filtered = filtered.filter(o => new Date(o.created_at) <= d); }
+            if (year) filtered = filtered.filter(o => new Date(o.created_at).getFullYear() === parseInt(year));
+            if (status) filtered = filtered.filter(o => o.status === status);
+
+            const escCSV = v => { const s = String(v ?? '').replace(/"/g, '""'); return `"${s}"`; };
+            const rows = [['Order ID','Date','Time','Year','Product Name','Quantity','Item Subtotal','Payment Method','Order Status','Order Total']];
+            filtered.forEach(o => {
+                const dt = new Date(o.created_at);
+                const dateStr = dt.toLocaleDateString('en-IN');
+                const timeStr = dt.toLocaleTimeString('en-IN', { hour12: true });
+                const yearVal = dt.getFullYear();
+                if ((o.items || []).length) {
+                    o.items.forEach(i => {
+                        rows.push([
+                            escCSV(o.id), escCSV(dateStr), escCSV(timeStr), escCSV(yearVal),
+                            escCSV(i.product_name), escCSV(i.quantity), escCSV(parseFloat(i.subtotal||0).toFixed(2)),
+                            escCSV((o.payment_method||'').replace(/_/g,' ')), escCSV(o.status), escCSV(parseFloat(o.total_amount||0).toFixed(2))
+                        ]);
+                    });
+                } else {
+                    rows.push([
+                        escCSV(o.id), escCSV(dateStr), escCSV(timeStr), escCSV(yearVal),
+                        escCSV('—'), escCSV('—'), escCSV('—'),
+                        escCSV((o.payment_method||'').replace(/_/g,' ')), escCSV(o.status), escCSV(parseFloat(o.total_amount||0).toFixed(2))
+                    ]);
+                }
+            });
+
+            const csv = rows.map(r => r.join(',')).join('\n');
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeName = (customer.full_name || customer.email || 'customer').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+            a.href = url;
+            a.download = `purchase_history_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
 
         async function loadUsers() {
             try {
