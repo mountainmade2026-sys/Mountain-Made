@@ -1517,7 +1517,7 @@
             </section>
 
             <!-- Important Information -->
-            <section class="wholesale-section wholesale-dashboard-block">
+            <section class="wholesale-section wholesale-dashboard-block" id="wholesale-account-info">
                 <h2>Wholesale Account Information</h2>
                 <div class="info-grid">
                     <div class="info-item">
@@ -1622,7 +1622,7 @@
                     <li><a href="#catalog" data-wholesale-view="catalog">Product Catalog</a></li>
                     <li><a href="#orders" data-wholesale-view="orders">Order Management</a></li>
                     <li><a href="/cart">Shopping Cart</a></li>
-                    <li><a href="#">Bulk Pricing</a></li>
+                    <li><a href="#catalog" data-wholesale-view="bulk-pricing">Bulk Pricing</a></li>
                 </ul>
             </div>
             
@@ -1630,9 +1630,9 @@
                 <h3>Support</h3>
                 <ul>
                     <li><a href="#">Wholesale FAQ</a></li>
-                    <li><a href="#">Contact Sales Team</a></li>
-                    <li><a href="#">Shipping & Returns</a></li>
-                    <li><a href="#">Payment Terms</a></li>
+                    <li><a href="#contact" data-wholesale-view="contact">Contact Sales Team</a></li>
+                    <li><a href="/returns">Shipping &amp; Returns</a></li>
+                    <li><a href="#payment-terms" data-wholesale-view="payment-terms">Payment Terms</a></li>
                 </ul>
             </div>
             
@@ -1738,7 +1738,8 @@
             const catalogNav = document.getElementById('wholesale-nav-catalog');
             const ordersNav = document.getElementById('wholesale-nav-orders');
 
-            const showCatalog = view === 'catalog';
+            // 'bulk-pricing' maps to catalog; 'contact' and 'payment-terms' map to dashboard
+            const showCatalog = view === 'catalog' || view === 'bulk-pricing';
             const showOrders = view === 'orders';
 
             dashboardBlocks.forEach(block => {
@@ -1760,12 +1761,28 @@
             if (showOrders) {
                 loadWholesaleOrders();
             }
+
+            // Scroll to specific dashboard sub-sections
+            if (view === 'contact') {
+                setTimeout(() => {
+                    document.getElementById('wholesale-contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 80);
+            } else if (view === 'payment-terms') {
+                setTimeout(() => {
+                    document.getElementById('wholesale-account-info')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 80);
+            }
         }
 
         function initializeWholesaleViewRouting() {
             const routeByHash = () => {
                 const hash = (window.location.hash || '').toLowerCase();
-                const view = hash === '#catalog' ? 'catalog' : (hash === '#orders' ? 'orders' : 'dashboard');
+                const view = hash === '#catalog' ? 'catalog'
+                    : hash === '#orders' ? 'orders'
+                    : hash === '#contact' ? 'contact'
+                    : hash === '#payment-terms' ? 'payment-terms'
+                    : hash === '#bulk-pricing' ? 'bulk-pricing'
+                    : 'dashboard';
                 switchWholesaleView(view);
             };
 
@@ -1778,6 +1795,10 @@
                         e.preventDefault();
                         window.location.hash = 'catalog';
                         switchWholesaleView('catalog');
+                    } else if (targetView === 'bulk-pricing') {
+                        e.preventDefault();
+                        window.location.hash = 'bulk-pricing';
+                        switchWholesaleView('bulk-pricing');
                     } else if (targetView === 'orders') {
                         e.preventDefault();
                         window.location.hash = 'orders';
@@ -1786,6 +1807,14 @@
                         e.preventDefault();
                         window.location.hash = 'dashboard';
                         switchWholesaleView('dashboard');
+                    } else if (targetView === 'contact') {
+                        e.preventDefault();
+                        window.location.hash = 'contact';
+                        switchWholesaleView('contact');
+                    } else if (targetView === 'payment-terms') {
+                        e.preventDefault();
+                        window.location.hash = 'payment-terms';
+                        switchWholesaleView('payment-terms');
                     }
                 });
             });
