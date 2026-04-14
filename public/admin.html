@@ -599,16 +599,10 @@
         }
 
         .data-table {
-            display: block;             /* allows overflow-x:auto on the table itself */
             width: 100%;
             min-width: 560px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
             border-collapse: collapse;
         }
-        .data-table::-webkit-scrollbar { height: 4px; }
-        .data-table::-webkit-scrollbar-track { background: var(--bg); }
-        .data-table::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 4px; }
 
         .data-table thead {
             background: #f7faf8;
@@ -3873,17 +3867,17 @@
 
         window.updateDiscountFromMainPrice = function() { /* legacy no-op */ };
 
-        window.calcDiscountPreview = function(priceId, pctId, previewId) {
+        window.calcDiscountPreview = function(priceId, amtId, previewId) {
             const price = parseFloat(document.getElementById(priceId)?.value || '');
-            const pct   = parseFloat(document.getElementById(pctId)?.value   || '');
+            const amt   = parseFloat(document.getElementById(amtId)?.value   || '');
             const preview = document.getElementById(previewId);
             if (!preview) return;
-            if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(pct) || pct < 1 || pct > 100) {
+            if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(amt) || amt <= 0 || amt >= price) {
                 preview.innerHTML = '';
                 return;
             }
-            const discounted = price * (1 - pct / 100);
-            preview.innerHTML = `<span style="text-decoration:line-through;color:var(--text-muted,#7a8f85);margin-right:6px;">\u20b9${price.toFixed(2)}</span><strong style="color:var(--success,#10b981);">\u20b9${discounted.toFixed(2)}</strong><span style="color:var(--text-muted,#7a8f85);margin-left:6px;font-size:0.9em;">(saving \u20b9${(price - discounted).toFixed(2)})</span>`;
+            const discounted = price - amt;
+            preview.innerHTML = `<span style="text-decoration:line-through;color:var(--text-muted,#7a8f85);margin-right:6px;">\u20b9${price.toFixed(2)}</span><strong style="color:var(--success,#10b981);">\u20b9${discounted.toFixed(2)}</strong><span style="color:var(--text-muted,#7a8f85);margin-left:6px;font-size:0.9em;">(saving \u20b9${amt.toFixed(2)})</span>`;
         };
     // Admin dashboard with improved mobile handling
     (function(){
@@ -5263,7 +5257,7 @@
                         document.getElementById('recent-orders-container').innerHTML = '<div class="empty-state"><p>No recent orders</p></div>';
                     } else {
                         let html = '<div class="data-table-container" style="box-shadow:none; border-radius:0; margin:0;">';
-                        html += '<table class="data-table"><thead><tr>' +
+                        html += '<div class="data-table-scroll"><table class="data-table"><thead><tr>' +
                             '<th>Order</th>' +
                             '<th>Customer</th>' +
                             '<th>Total</th>' +
@@ -5291,7 +5285,7 @@
                             `;
                         });
 
-                        html += '</tbody></table></div>';
+                        html += '</tbody></table></div></div>';
                         document.getElementById('recent-orders-container').innerHTML = html;
                     }
                 } catch (e) {
@@ -5318,7 +5312,7 @@
                         document.getElementById('low-stock-container').innerHTML = '<div class="empty-state"><p>No low stock products</p></div>';
                     } else {
                         let html = '<div class="data-table-container" style="box-shadow:none; border-radius:0; margin:0;">';
-                        html += '<table class="data-table"><thead><tr>' +
+                        html += '<div class="data-table-scroll"><table class="data-table"><thead><tr>' +
                             '<th>Product</th>' +
                             '<th>Stock</th>' +
                             '<th>Price</th>' +
@@ -5344,7 +5338,7 @@
                             `;
                         });
 
-                        html += '</tbody></table></div>';
+                        html += '</tbody></table></div></div>';
                         document.getElementById('low-stock-container').innerHTML = html;
                     }
                 } catch (e) {
@@ -5504,7 +5498,7 @@
                 }
 
                 let html = '<div class="data-table-container" style="box-shadow:none;border-radius:0;margin:0;">';
-                html += '<table class="data-table"><thead><tr>' +
+                html += '<div class="data-table-scroll"><table class="data-table"><thead><tr>' +
                     '<th>Date</th><th>Orders</th><th>Revenue</th><th>Cost</th><th>Delivery Fees</th><th>Profit</th>' +
                     '</tr></thead><tbody>';
                 rows.forEach(r => {
@@ -5518,7 +5512,7 @@
                         <td style="${profitColor}font-weight:600;">${formatCurrency(r.profit)}</td>
                     </tr>`;
                 });
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 wrap.innerHTML = html;
                 exportBtn.style.display = '';
             } catch (err) {
@@ -5613,7 +5607,7 @@
                     return;
                 }
 
-                let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
+                let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
                 
                 categories.forEach(c => {
                     html += `
@@ -5631,7 +5625,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('categories-list').innerHTML = html;
             } catch (error) {
                 console.error('Load categories error:', error);
@@ -5651,7 +5645,7 @@
                     return;
                 }
 
-                let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Sort Order</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Sort Order</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
                 
                 sections.forEach(s => {
                     html += `
@@ -5671,7 +5665,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('homepage-sections-list').innerHTML = html;
             } catch (error) {
                 console.error('Load homepage sections error:', error);
@@ -6207,7 +6201,7 @@
                     return;
                 }
 
-                let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+                let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
                 orders.forEach(o => {
                     const statusBadgeClass = o.status === 'delivered' ? 'badge-success' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning';
                     const statusLabel = o.status || 'pending';
@@ -6261,7 +6255,7 @@
                         </tr>
                     `;
                 });
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('customer-orders-list').innerHTML = html;
             } catch (error) {
                 console.error('Load customer orders error:', error);
@@ -6608,7 +6602,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr>' +
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr>' +
                 '<th>Return #</th><th>Order</th><th>Customer</th><th>Items</th><th>Reason</th><th>Refund</th><th>Status</th><th>Date</th><th>Actions</th>' +
                 '</tr></thead><tbody>';
 
@@ -6662,7 +6656,7 @@
                 </tr>`;
             });
 
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             container.innerHTML = html;
         }
 
@@ -6850,7 +6844,7 @@
                 container.innerHTML = '<div class="empty-state"><p>No customers found</p></div>';
                 return;
             }
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr>' +
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr>' +
                 '<th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Orders</th><th>Total Spent</th><th>Joined</th><th>Actions</th>' +
                 '</tr></thead><tbody>';
             customers.forEach(c => {
@@ -6872,7 +6866,7 @@
                     </td>
                 </tr>`;
             });
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             container.innerHTML = html;
         }
 
@@ -7005,7 +6999,7 @@
                 shipped:'badge-secondary', delivered:'badge-success', cancelled:'badge-danger'
             }[s] || 'badge-secondary');
 
-            let html = '<div class="data-table-container"><table class="data-table">' +
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table">' +
                 '<thead><tr>' +
                 '<th>Order #</th><th>Date &amp; Time</th><th>Products Purchased</th>' +
                 '<th>Payment</th><th>Status</th><th style="text-align:right">Amount</th>' +
@@ -7029,7 +7023,7 @@
                 </tr>`;
             });
 
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             container.innerHTML = html;
         }
 
@@ -7109,7 +7103,7 @@
                         return;
                     }
 
-                    let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>';
+                    let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>';
                     users.forEach(u => {
                         const isBlocked = u.is_blocked || false;
                         const isProtected = u.role === 'admin' || u.role === 'super_admin';
@@ -7138,7 +7132,7 @@
                             </tr>
                         `;
                     });
-                    html += '</tbody></table></div>';
+                    html += '</tbody></table></div></div>';
                     document.getElementById('users-list').innerHTML = html;
                 }
             } catch (error) {
@@ -7194,7 +7188,7 @@
                         return;
                     }
 
-                    let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>Type</th><th>User</th><th>Details</th><th>Date</th></tr></thead><tbody>';
+                    let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>User</th><th>Details</th><th>Date</th></tr></thead><tbody>';
                     activities.forEach(a => {
                         const activityType = a.activity_type || 'unknown';
                         const userName = a.full_name || 'Unknown User';
@@ -7219,7 +7213,7 @@
                             </tr>
                         `;
                     });
-                    html += '</tbody></table></div>';
+                    html += '</tbody></table></div></div>';
                     document.getElementById('activities-list').innerHTML = html;
                 }
             } catch (error) {
@@ -7248,7 +7242,7 @@
                     return;
                 }
 
-                let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Business</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Business</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
                 users.forEach(u => {
                     html += `
                         <tr>
@@ -7265,7 +7259,7 @@
                         </tr>
                     `;
                 });
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('wholesale-list').innerHTML = html;
             } catch (error) {
                 console.error('Load wholesale requests error:', error);
@@ -8691,7 +8685,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
 
             filtered.forEach(c => {
                 html += `
@@ -8709,7 +8703,7 @@
                     `;
             });
 
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             document.getElementById('categories-list').innerHTML = html;
         };
 
@@ -8783,7 +8777,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>Type</th><th>User</th><th>Details</th><th>Date</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>User</th><th>Details</th><th>Date</th></tr></thead><tbody>';
             filtered.forEach(a => {
                 const activityType = a.activity_type || 'unknown';
                 const userName = a.full_name || 'Unknown User';
@@ -8817,7 +8811,7 @@
                     </tr>
                 `;
             });
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             document.getElementById('activities-list').innerHTML = html;
         };
 
@@ -8854,7 +8848,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>';
             filtered.forEach(u => {
                 const isBlocked = u.is_blocked || false;
                 const isProtected = u.role === 'admin' || u.role === 'super_admin';
@@ -8884,7 +8878,7 @@
                     </tr>
                 `;
             });
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             document.getElementById('users-list').innerHTML = html;
         };
 
@@ -8912,7 +8906,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody>';
             
             filtered.forEach(p => {
                 html += `
@@ -8936,7 +8930,7 @@
                 `;
             });
             
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             document.getElementById('products-list').innerHTML = html;
         };
         window.filterOrders = function() {
@@ -8965,7 +8959,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
             filtered.forEach(o => {
                 const deliverySpeed = (o.delivery_speed || 'standard').toLowerCase();
                 const deliveryCharge = o.delivery_charge != null ? parseFloat(o.delivery_charge) : 0;
@@ -9031,7 +9025,7 @@
                     </tr>
                 `;
             });
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             document.getElementById('orders-list').innerHTML = html;
         };
 
@@ -9132,7 +9126,7 @@
                 return;
             }
 
-            let html = '<div class="data-table-container"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
             filtered.forEach(o => {
                 const statusBadgeClass = o.status === 'delivered' ? 'badge-success' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning';
                 const statusLabel = o.status || 'pending';
@@ -9170,7 +9164,7 @@
                     </tr>
                 `;
             });
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             document.getElementById('customer-orders-list').innerHTML = html;
         };
 
