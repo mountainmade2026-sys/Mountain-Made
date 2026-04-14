@@ -1542,21 +1542,35 @@
             heroSliderState.total = images.length;
 
             if (images.length === 0) {
-                // Fallback: solid dark-green background, no dots
-                slides.forEach(s => { s.style.backgroundImage = ''; s.classList.remove('active'); });
-                slides[0].classList.add('active');
+                slides.forEach((s, i) => {
+                    s.innerHTML = '';
+                    s.style.backgroundImage = '';
+                    s.classList.toggle('active', i === 0);
+                });
                 if (dotsWrap) dotsWrap.innerHTML = '';
                 return;
             }
 
-            // Assign images to slide divs
-            images.forEach((url, idx) => {
-                if (slides[idx]) {
-                    slides[idx].style.backgroundImage = `url('${url}')`;
+            // Inject <img> into each active slide so images load reliably
+            // (CSS background-image can be blocked by cache/privacy; <img> always works)
+            slides.forEach((slide, idx) => {
+                // Clear previous content
+                slide.innerHTML = '';
+                slide.style.backgroundImage = '';
+                slide.classList.remove('active');
+
+                const url = images[idx];
+                if (url) {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = `Slide ${idx + 1}`;
+                    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block;pointer-events:none;';
+                    img.loading = idx === 0 ? 'eager' : 'lazy';
+                    slide.appendChild(img);
                 }
             });
 
-            // Build dots (only for active images)
+            // Build dots
             if (dotsWrap) {
                 dotsWrap.innerHTML = images.map((_, idx) =>
                     `<span class="hero-dot${idx === 0 ? ' active' : ''}" data-idx="${idx}"></span>`
@@ -1580,12 +1594,11 @@
                 }, 5000);
             }
 
-            // On mobile: use first slider image as full-section background (shows behind the search bar)
+            // On mobile: also set section background so image shows behind the search bar
             const section = document.getElementById('hero-slider-section');
-            const mobileBgUrl = images[0] || '';
             if (section) {
-                if (mobileBgUrl) {
-                    section.style.backgroundImage = `url('${mobileBgUrl}')`;
+                if (images[0]) {
+                    section.style.backgroundImage = `url('${images[0]}')`;
                     section.classList.add('has-mobile-bg');
                 } else {
                     section.style.backgroundImage = '';
