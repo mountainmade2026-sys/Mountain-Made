@@ -1666,12 +1666,34 @@
             });
         }
 
-        function _renderFlipCards(section, grid, cards) {
-            grid.innerHTML = cards.map((c, idx) => {
-                const ctaColor = FLIP_CTA_COLORS[(c.slot != null ? c.slot - 1 : idx) % FLIP_CTA_COLORS.length];
+        function initFlipCards(settings) {
+            const section = document.getElementById('flip-cards-section');
+            const grid   = document.getElementById('flip-cards-grid');
+            if (!section || !grid) return;
+
+            const active = [];
+            for (let i = 1; i <= 5; i++) {
+                const front = (settings[`flip_card_front_${i}`] || '').trim();
+                const back  = (settings[`flip_card_back_${i}`]  || '').trim();
+                if (front || back) {
+                    active.push({
+                        slot:  i,
+                        front, back,
+                        label: (settings[`flip_card_label_${i}`] || 'Shop Now').trim(),
+                        title: (settings[`flip_card_title_${i}`] || '').trim()
+                    });
+                }
+            }
+
+            if (active.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            grid.innerHTML = active.map((c) => {
+                const ctaColor  = FLIP_CTA_COLORS[(c.slot - 1) % FLIP_CTA_COLORS.length];
                 const labelText = c.label || 'Shop Now';
                 const backLabel = c.title || 'View Details';
-                const href      = c.href  || '/products';
 
                 const frontImgHtml = c.front
                     ? `<img src="${c.front}" alt="${labelText}" class="flip-card-img" loading="lazy" onerror="this.style.display='none'">`
@@ -1684,102 +1706,27 @@
                         : `<div class="flip-card-placeholder"><i class="fas fa-star"></i></div>`);
 
                 return `
-                <div class="flip-card-wrap" data-slot="${c.slot != null ? c.slot : idx + 1}">
-                    <a href="${href}" style="text-decoration:none;display:contents;">
-                        <div class="flip-card" aria-label="${labelText}">
-                            <div class="flip-card-inner">
-                                <div class="flip-card-front">
-                                    <div class="flip-card-img-wrap">${frontImgHtml}</div>
-                                    <span class="flip-card-ad-badge">${c.isProduct ? 'SALE' : 'AD'}</span>
-                                    <div class="flip-card-cta-bar" style="background:${ctaColor}">${labelText}</div>
-                                </div>
-                                <div class="flip-card-back">
-                                    <div class="flip-card-img-wrap">${backImgHtml}</div>
-                                    <span class="flip-card-ad-badge">${c.isProduct ? 'SALE' : 'AD'}</span>
-                                    <div class="flip-card-cta-bar">${backLabel}</div>
-                                </div>
+                <div class="flip-card-wrap" data-slot="${c.slot}">
+                    <div class="flip-card" aria-label="${labelText} — auto-flipping card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <div class="flip-card-img-wrap">${frontImgHtml}</div>
+                                <span class="flip-card-ad-badge">AD</span>
+                                <div class="flip-card-cta-bar" style="background:${ctaColor}">${labelText}</div>
+                            </div>
+                            <div class="flip-card-back">
+                                <div class="flip-card-img-wrap">${backImgHtml}</div>
+                                <span class="flip-card-ad-badge">AD</span>
+                                <div class="flip-card-cta-bar">${backLabel}</div>
                             </div>
                         </div>
-                    </a>
+                    </div>
                     ${c.title ? `<div class="flip-card-subtitle">${c.title}</div>` : ''}
                 </div>`;
             }).join('');
 
             section.style.display = '';
             setTimeout(startFlipCardAutoFlip, 800);
-        }
-
-        async function initFlipCards(settings) {
-            const section = document.getElementById('flip-cards-section');
-            const grid   = document.getElementById('flip-cards-grid');
-            if (!section || !grid) return;
-
-            // 1 — Try admin-configured cards from site_settings
-            const configured = [];
-            for (let i = 1; i <= 5; i++) {
-                const front = (settings[`flip_card_front_${i}`] || '').trim();
-                const back  = (settings[`flip_card_back_${i}`]  || '').trim();
-                if (front || back) {
-                    configured.push({
-                        slot:  i,
-                        front, back,
-                        label: (settings[`flip_card_label_${i}`] || 'Shop Now').trim(),
-                        title: (settings[`flip_card_title_${i}`] || '').trim(),
-                        href:  '/products',
-                        isProduct: false
-                    });
-                }
-            }
-
-            if (configured.length > 0) {
-                _renderFlipCards(section, grid, configured);
-                return;
-            }
-
-            // 2 — Fallback: dynamically populate from discounted products
-            try {
-                const resp = await api.get('/products');
-                const all = Array.isArray(resp.products) ? resp.products : [];
-
-                // prefer products that have a discount and an image
-                const discounted = all
-                    .filter(p => p.image_url && p.discount_price != null &&
-                                 parseFloat(p.discount_price) < parseFloat(p.price || 0))
-                    .slice(0, 5);
-
-                // if fewer than 2 discounted, pad with any product that has an image
-                let featured = discounted;
-                if (featured.length < 2) {
-                    const withImg = all.filter(p => p.image_url && !discounted.includes(p));
-                    featured = [...discounted, ...withImg].slice(0, 5);
-                }
-
-                if (featured.length === 0) { section.style.display = 'none'; return; }
-
-                const dynCards = featured.map((p, idx) => {
-                    const base     = parseFloat(p.price || 0);
-                    const disc     = p.discount_price != null ? parseFloat(p.discount_price) : null;
-                    const hasDisc  = disc != null && disc < base;
-                    const extraImg = Array.isArray(p.images) && p.images.length > 1
-                        ? p.images.find(img => img !== p.image_url) || p.image_url
-                        : p.image_url;
-                    return {
-                        slot:      idx + 1,
-                        front:     p.image_url,
-                        back:      extraImg,
-                        label:     p.name,
-                        title:     hasDisc
-                            ? `₹${disc.toFixed(0)} — Save ₹${(base - disc).toFixed(0)}`
-                            : `₹${base.toFixed(0)}`,
-                        href:      `/product-details?id=${p.id}`,
-                        isProduct: true
-                    };
-                });
-
-                _renderFlipCards(section, grid, dynCards);
-            } catch (_) {
-                section.style.display = 'none';
-            }
         }
 
         // Load dynamic homepage sections with products
@@ -1795,7 +1742,7 @@
             }
             // Always init the hero slider and flip cards with whatever settings we have
             initHeroSlider(settings);
-            await initFlipCards(settings);
+            initFlipCards(settings);
 
             // Apply hero heading text immediately from settings
             try {
