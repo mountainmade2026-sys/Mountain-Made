@@ -488,7 +488,7 @@ const initializeDatabase = async () => {
         user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         order_number VARCHAR(50) UNIQUE NOT NULL,
         total_amount DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+        status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled')),
         shipping_address JSONB NOT NULL,
         payment_method VARCHAR(50),
         notes TEXT,
