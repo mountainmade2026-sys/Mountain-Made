@@ -951,6 +951,61 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
+exports.updateOrderTracking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tracking_number, courier_name, tracking_url, estimated_delivery, mark_shipped } = req.body;
+
+    const client = await db.pool.connect();
+    try {
+      // Validate order exists
+      const existing = await client.query('SELECT id, status FROM orders WHERE id = $1', [id]);
+      if (!existing.rows.length) {
+        return res.status(404).json({ error: 'Order not found.' });
+      }
+
+      let extraFields = '';
+      const values = [
+        tracking_number || null,
+        courier_name || null,
+        tracking_url || null,
+        estimated_delivery || null,
+      ];
+
+      // If admin checks "mark as shipped" and order is still processing, update status too
+      const currentStatus = existing.rows[0].status;
+      if (mark_shipped && currentStatus === 'processing') {
+        extraFields = ', status = $5, dispatched_at = CURRENT_TIMESTAMP';
+        values.push('shipped');
+      } else if (mark_shipped && currentStatus !== 'shipped') {
+        extraFields = ', dispatched_at = CURRENT_TIMESTAMP';
+      }
+
+      values.push(id); // last param for WHERE id = $N
+      const idParam = `$${values.length}`;
+
+      const result = await client.query(
+        `UPDATE orders
+         SET tracking_number = $1,
+             courier_name    = $2,
+             tracking_url    = $3,
+             estimated_delivery = $4${extraFields},
+             updated_at      = CURRENT_TIMESTAMP
+         WHERE id = ${idParam}
+         RETURNING *`,
+        values
+      );
+
+      res.json({ message: 'Tracking info updated successfully.', order: result.rows[0] });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Update order tracking error:', error);
+    res.status(500).json({ error: 'Failed to update tracking info.' });
+  }
+};
+
 // Dashboard History (orders grouped by day, filterable by date range or year)
 exports.getDashboardHistory = async (req, res) => {
   try {

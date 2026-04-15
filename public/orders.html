@@ -136,6 +136,108 @@
             color: var(--error);
         }
 
+        /* ── Delivery Stepper ─────────────────────────── */
+        .delivery-stepper {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin: 1.25rem 0 0.75rem;
+            position: relative;
+        }
+        .delivery-stepper::before {
+            content: '';
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            right: 18px;
+            height: 3px;
+            background: var(--border, #e5e7eb);
+            z-index: 0;
+        }
+        .ds-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            z-index: 1;
+            flex: 1;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--text-light, #94a3b8);
+            text-align: center;
+        }
+        .ds-step-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            border: 3px solid var(--border, #e5e7eb);
+            background: var(--bg-primary, #fff);
+            color: var(--text-light, #94a3b8);
+            transition: all 0.25s;
+        }
+        .ds-step.done .ds-step-icon {
+            border-color: var(--success, #10b981);
+            background: var(--success, #10b981);
+            color: #fff;
+        }
+        .ds-step.active .ds-step-icon {
+            border-color: var(--primary, #1a4731);
+            background: var(--primary, #1a4731);
+            color: #fff;
+        }
+        .ds-step.done { color: var(--success, #10b981); }
+        .ds-step.active { color: var(--primary, #1a4731); font-weight: 700; }
+        .ds-step.done .ds-step-label { color: var(--success, #10b981); }
+        .ds-step.active .ds-step-label { color: var(--primary, #1a4731); }
+        .ds-progress {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            height: 3px;
+            background: var(--primary, #1a4731);
+            z-index: 0;
+            transition: width 0.4s ease;
+        }
+
+        /* ── Tracking Card ─────────────────────────── */
+        .tracking-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.85rem;
+            padding: 0.85rem 1rem;
+            background: #f0fdf8;
+            border: 1.5px solid var(--success, #10b981);
+            border-radius: 12px;
+            margin-top: 1rem;
+            font-size: 0.88rem;
+        }
+        .tracking-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--success, #10b981);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .tracking-card-body { flex: 1; min-width: 0; }
+        .tracking-card-label { font-weight: 700; margin-bottom: 0.25rem; color: #065f46; }
+        .tracking-card-row { color: var(--text-primary, #1e293b); margin-bottom: 0.15rem; }
+        .tracking-card-row span { font-weight: 600; }
+        .tracking-card-link {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            color: var(--primary, #1a4731); font-weight: 600; text-decoration: none;
+            margin-top: 0.35rem;
+        }
+        .tracking-card-link:hover { text-decoration: underline; }
+
         @media (max-width: 600px) {
             .order-header {
                 flex-direction: column;
@@ -373,7 +475,58 @@
                 return;
             }
             
-            container.innerHTML = data.orders.map(order => `
+            container.innerHTML = data.orders.map(order => {
+                // ── Delivery stepper ──
+                const statusOrder = ['pending', 'processing', 'shipped', 'delivered'];
+                const steps = [
+                    { key: 'pending',    icon: 'fa-box',           label: 'Order Placed' },
+                    { key: 'processing', icon: 'fa-check-circle',  label: 'Confirmed' },
+                    { key: 'shipped',    icon: 'fa-shipping-fast', label: 'Shipped' },
+                    { key: 'delivered',  icon: 'fa-home',          label: 'Delivered' },
+                ];
+                const isCancelled = order.status === 'cancelled';
+                const currentIdx = statusOrder.indexOf(order.status);
+                // Progress bar width: 0%, 33%, 66%, 100%
+                const progressPct = isCancelled ? 0 : Math.max(0, (currentIdx / (steps.length - 1)) * 100);
+
+                const stepperHtml = isCancelled ? '' : `
+                    <div class="delivery-stepper" style="margin-top:1.25rem;">
+                        <div class="ds-progress" style="width:calc(${progressPct}% - 36px + ${progressPct === 0 ? 18 : progressPct < 100 ? 18 : 18}px);left:18px;"></div>
+                        ${steps.map((s, i) => {
+                            const isDone   = currentIdx > i;
+                            const isActive = currentIdx === i;
+                            const cls = isDone ? 'done' : isActive ? 'active' : '';
+                            return `<div class="ds-step ${cls}">
+                                <div class="ds-step-icon"><i class="fas ${s.icon}"></i></div>
+                                <span class="ds-step-label">${s.label}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                `;
+
+                // ── Tracking card ──
+                const hasTracking = order.tracking_number || order.courier_name;
+                const isShippedOrDelivered = order.status === 'shipped' || order.status === 'delivered';
+                let trackingHtml = '';
+                if (isShippedOrDelivered && hasTracking) {
+                    const etaText = order.estimated_delivery
+                        ? new Date(order.estimated_delivery).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : null;
+                    trackingHtml = `
+                        <div class="tracking-card">
+                            <div class="tracking-card-icon"><i class="fas fa-truck"></i></div>
+                            <div class="tracking-card-body">
+                                <div class="tracking-card-label">Shipment Tracking</div>
+                                ${order.courier_name ? `<div class="tracking-card-row">Carrier: <span>${order.courier_name}</span></div>` : ''}
+                                ${order.tracking_number ? `<div class="tracking-card-row">Tracking #: <span>${order.tracking_number}</span></div>` : ''}
+                                ${etaText ? `<div class="tracking-card-row">Est. Delivery: <span>${etaText}</span></div>` : ''}
+                                ${order.tracking_url ? `<a href="${order.tracking_url}" target="_blank" rel="noopener noreferrer" class="tracking-card-link"><i class="fas fa-external-link-alt"></i> Track Shipment</a>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
                 <div class="card">
                     <div class="card-content">
                         <div class="order-header" style="margin-bottom: 1rem;">
@@ -386,10 +539,10 @@
                                 <p style="margin-top: 0.5rem; font-size: 1.25rem; font-weight: 700; color: var(--primary);">${formatCurrency(order.total_amount)}</p>
                             </div>
                         </div>
-                        <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
-                            <p style="margin: 0 0 0.5rem; font-weight: 600; color: var(--primary);">
-                                Status: <span class="${getCustomerOrderStatusClass(order.status)}" style="margin-left: 0.25rem;">${getCustomerOrderStatusText(order.status)}</span>
-                            </p>
+
+                        ${stepperHtml}
+
+                        <div style="border-top: 1px solid var(--border); padding-top: 1rem; ${stepperHtml ? 'margin-top:1rem;' : ''}">
                             ${getRefundDisplay(order) ? `
                                 <p style="margin: 0 0 0.75rem; color: var(--text-light);">
                                     Payment/Refund: ${getRefundDisplay(order)}
@@ -397,6 +550,8 @@
                             ` : ''}
                             <strong style="display: block; margin-bottom: 0.5rem;">Items:</strong>
                             ${order.items.map(item => `<div style="display: flex; justify-content: space-between; padding: 0.5rem 0;"><span>${item.product_name} x ${item.quantity}</span><span>${formatCurrency(item.subtotal)}</span></div>`).join('')}
+
+                            ${trackingHtml}
 
                             ${(canCustomerCancel(order) || order.status === 'delivered' || order.status === 'shipped') ? `
                                 <div style="margin-top: 1rem; display:flex; justify-content:flex-end; gap:0.5rem; flex-wrap:wrap;">
@@ -421,7 +576,7 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // ── Return Products — Multi-Step Modal ──────────────────

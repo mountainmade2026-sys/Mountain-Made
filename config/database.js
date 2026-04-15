@@ -648,6 +648,41 @@ const initializeDatabase = async () => {
         ) THEN
           ALTER TABLE orders ADD COLUMN cancel_reason TEXT;
         END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'tracking_number'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN tracking_number VARCHAR(100);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'courier_name'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN courier_name VARCHAR(100);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'tracking_url'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN tracking_url TEXT;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'estimated_delivery'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN estimated_delivery DATE;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'dispatched_at'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN dispatched_at TIMESTAMP;
+        END IF;
       END $$;
     `);
 
