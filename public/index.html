@@ -1346,8 +1346,8 @@
     <section class="flip-cards-section" id="flip-cards-section" style="display:none;">
         <div class="flip-cards-container">
             <div class="flip-cards-header">
-                <h2 id="flip-cards-heading">Featured Deals</h2>
-                <span class="fc-badge" id="flip-cards-badge"><i class="fas fa-bolt"></i> Hot</span>
+                <h2>Featured Deals</h2>
+                <span class="fc-badge"><i class="fas fa-bolt"></i> Hot</span>
             </div>
             <div class="flip-cards-grid" id="flip-cards-grid">
                 <!-- Dynamically rendered by initFlipCards() -->
@@ -1666,7 +1666,7 @@
             });
         }
 
-        async function initFlipCards(settings) {
+        function initFlipCards(settings) {
             const section = document.getElementById('flip-cards-section');
             const grid   = document.getElementById('flip-cards-grid');
             if (!section || !grid) return;
@@ -1675,43 +1675,16 @@
             for (let i = 1; i <= 5; i++) {
                 const front = (settings[`flip_card_front_${i}`] || '').trim();
                 const back  = (settings[`flip_card_back_${i}`]  || '').trim();
-                if (front || back) {
+                const label = (settings[`flip_card_label_${i}`] || '').trim();
+                const title = (settings[`flip_card_title_${i}`] || '').trim();
+                // Show card if any field is configured
+                if (front || back || label || title) {
                     active.push({
                         slot:  i,
                         front, back,
-                        label: (settings[`flip_card_label_${i}`] || 'Shop Now').trim(),
-                        title: (settings[`flip_card_title_${i}`] || '').trim()
+                        label: label || 'Shop Now',
+                        title
                     });
-                }
-            }
-
-            // Dynamic fallback: if no admin images are configured, use latest products
-            if (active.length === 0) {
-                try {
-                    const resp = await api.get('/products?limit=5');
-                    const products = (resp && Array.isArray(resp.products) ? resp.products : []).slice(0, 5);
-                    products.forEach((p, idx) => {
-                        const imgs = Array.isArray(p.images) && p.images.length > 1 ? p.images : null;
-                        const frontImg = p.image_url || (imgs && imgs[0]) || '';
-                        const backImg  = (imgs && imgs[1]) || frontImg;
-                        const price = p.discount_price != null ? parseFloat(p.discount_price) : parseFloat(p.price || 0);
-                        const fmt = typeof window.formatCurrency === 'function' ? window.formatCurrency : (v) => `₹${parseFloat(v).toFixed(2)}`;
-                        active.push({
-                            slot:  idx + 1,
-                            front: frontImg,
-                            back:  backImg,
-                            label: price > 0 ? `${fmt(price)} — Shop Now` : 'Shop Now',
-                            title: p.name || '',
-                            productId: p.id
-                        });
-                    });
-                    // Update section heading to reflect product context
-                    const hdEl = document.getElementById('flip-cards-heading');
-                    const bdgEl = document.getElementById('flip-cards-badge');
-                    if (hdEl) hdEl.textContent = 'Featured Products';
-                    if (bdgEl) bdgEl.innerHTML = '<i class="fas fa-star"></i> New';
-                } catch (e) {
-                    console.warn('Flip cards: could not load fallback products', e);
                 }
             }
 
@@ -1735,28 +1708,22 @@
                         ? `<img src="${c.front}" alt="${backLabel}" class="flip-card-img" loading="lazy">`
                         : `<div class="flip-card-placeholder"><i class="fas fa-star"></i></div>`);
 
-                const cardLink = c.productId ? `/product-details?id=${c.productId}` : '';
-                const wrapTag  = cardLink ? `<a href="${cardLink}" style="display:contents;text-decoration:none;color:inherit;">` : '';
-                const wrapEnd  = cardLink ? `</a>` : '';
-
                 return `
                 <div class="flip-card-wrap" data-slot="${c.slot}">
-                    ${wrapTag}
                     <div class="flip-card" aria-label="${labelText} — auto-flipping card">
                         <div class="flip-card-inner">
                             <div class="flip-card-front">
                                 <div class="flip-card-img-wrap">${frontImgHtml}</div>
-                                <span class="flip-card-ad-badge">${c.productId ? 'NEW' : 'AD'}</span>
+                                <span class="flip-card-ad-badge">AD</span>
                                 <div class="flip-card-cta-bar" style="background:${ctaColor}">${labelText}</div>
                             </div>
                             <div class="flip-card-back">
                                 <div class="flip-card-img-wrap">${backImgHtml}</div>
-                                <span class="flip-card-ad-badge">${c.productId ? 'NEW' : 'AD'}</span>
+                                <span class="flip-card-ad-badge">AD</span>
                                 <div class="flip-card-cta-bar">${backLabel}</div>
                             </div>
                         </div>
                     </div>
-                    ${wrapEnd}
                     ${c.title ? `<div class="flip-card-subtitle">${c.title}</div>` : ''}
                 </div>`;
             }).join('');
@@ -1778,7 +1745,7 @@
             }
             // Always init the hero slider and flip cards with whatever settings we have
             initHeroSlider(settings);
-            await initFlipCards(settings);
+            initFlipCards(settings);
 
             // Apply hero heading text immediately from settings
             try {
