@@ -1934,6 +1934,7 @@
                             <option value="customer">Customer</option>
                             <option value="wholesale">Wholesale</option>
                         </select>
+                        <button class="btn btn-secondary btn-sm" onclick="resetCustomersFilters()"><i class="fas fa-undo"></i> Reset</button>
                     </div>
                 </div>
                 <div id="customers-list"></div>
@@ -2439,26 +2440,26 @@
                     </div>
                     <div style="padding: 2rem;">
                         <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                            Configure the Fast Delivery option that appears during checkout. The charge is added on top of the cart subtotal when customers choose Fast Delivery.
+                            Configure the Standard Delivery charge that applies during checkout. The charge is added on top of the cart subtotal for every order.
                         </p>
 
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="fast-delivery-enabled" style="width: auto;">
-                                Enable Fast Delivery at checkout
+                                <input type="checkbox" id="standard-delivery-enabled" style="width: auto;">
+                                Enable Standard Delivery charge at checkout
                             </label>
                         </div>
 
                         <div class="form-group" style="margin-bottom: 1rem; max-width: 260px;">
-                            <label class="form-label" for="fast-delivery-charge">Fast Delivery Charge (₹)</label>
-                            <input type="text" id="fast-delivery-charge" class="form-input" placeholder="e.g., 50">
+                            <label class="form-label" for="standard-delivery-charge">Standard Delivery Charge (₹)</label>
+                            <input type="text" id="standard-delivery-charge" class="form-input" placeholder="e.g., 50">
                             <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">
-                                This amount will be applied per order when Fast Delivery is selected.
+                                This amount will be applied per order for Standard Delivery.
                             </small>
                         </div>
 
                         <button class="btn btn-primary" onclick="saveDeliverySettings()">
-                            <i class="fas fa-shipping-fast"></i> Save Delivery Settings
+                            <i class="fas fa-truck"></i> Save Delivery Settings
                         </button>
                     </div>
                 </div>
@@ -3720,7 +3721,7 @@
             <div id="ch-modal" class="modal">
                 <div class="modal-content modal-content-xl">
                     <div class="modal-header">
-                        <h2><i class="fas fa-history"></i> Purchase History</h2>
+                        <h2><i class="fas fa-history"></i> Purchase History <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">(Last 6 months)</span></h2>
                         <button class="modal-close" onclick="closeCustomerHistoryModal()">&times;</button>
                     </div>
                     <!-- Customer info bar -->
@@ -5961,11 +5962,10 @@
                             ? `<span class="badge badge-success">refunded</span>`
                             : `<span class="badge badge-${t.status === 'delivered' ? 'success' : t.status === 'cancelled' ? 'danger' : 'warning'}">${t.status}</span>`;
                         const deliveryCharge = parseFloat(t.item_delivery_charge) || 0;
-                        const isFast = t.delivery_speed === 'fast';
                         const deliveryCell = isReturn
                             ? `<span style="color:var(--text-muted);">—</span>`
                             : deliveryCharge > 0
-                                ? `<span style="color:var(--warning);font-weight:600;">${formatCurrency(deliveryCharge)}${isFast ? ' <i class="fas fa-bolt" title="Fast Delivery" style="font-size:0.75rem;"></i>' : ''}</span>`
+                                ? `<span style="color:var(--warning);font-weight:600;">${formatCurrency(deliveryCharge)}</span>`
                                 : `<span style="color:var(--text-muted);">—</span>`;
                         const totalWithDelivery = isReturn ? parseFloat(t.subtotal) : parseFloat(t.subtotal) + deliveryCharge;
                         rowsHtml += `
@@ -6211,15 +6211,9 @@
                     const hasCharge = !Number.isNaN(deliveryCharge) && deliveryCharge > 0;
 
                     let deliveryLabel;
-                    if (deliverySpeed === 'fast') {
-                        deliveryLabel = hasCharge
-                            ? `Fast (${formatCurrency(deliveryCharge)})`
-                            : 'Fast (Free)';
-                    } else {
-                        deliveryLabel = hasCharge
-                            ? `Standard (+${formatCurrency(deliveryCharge)})`
-                            : 'Standard (Free)';
-                    }
+                    deliveryLabel = hasCharge
+                        ? `Standard (+${formatCurrency(deliveryCharge)})`
+                        : 'Standard (Free)';
 
                     const items = Array.isArray(o.items) ? o.items : [];
                     const itemsHtml = items.length
@@ -6883,6 +6877,15 @@
             renderCustomersList(list);
         };
 
+        window.resetCustomersFilters = function() {
+            const searchEl = document.getElementById('customers-search');
+            const roleEl = document.getElementById('customers-role-filter');
+            if (searchEl) searchEl.value = '';
+            if (roleEl) roleEl.value = '';
+            const allCustomers = window._customersCache || [];
+            renderCustomersList(allCustomers);
+        };
+
         // ── Customer History Modal ──────────────────────────────────
         window._chAllOrders = [];
         window._chCustomer = null;
@@ -7369,16 +7372,16 @@
                 if (contactLocationEl) contactLocationEl.value = settings.contact_location || '';
 
                 // Populate delivery settings
-                const fastEnabledInput = document.getElementById('fast-delivery-enabled');
-                const fastChargeInput = document.getElementById('fast-delivery-charge');
-                if (fastEnabledInput) {
-                    const rawEnabled = (settings.fast_delivery_enabled ?? 'false').toString().toLowerCase();
-                    fastEnabledInput.checked = rawEnabled === 'true';
+                const stdEnabledInput = document.getElementById('standard-delivery-enabled');
+                const stdChargeInput = document.getElementById('standard-delivery-charge');
+                if (stdEnabledInput) {
+                    const rawEnabled = (settings.standard_delivery_enabled ?? settings.fast_delivery_enabled ?? 'false').toString().toLowerCase();
+                    stdEnabledInput.checked = rawEnabled === 'true';
                 }
-                if (fastChargeInput) {
-                    const rawCharge = settings.fast_delivery_charge;
+                if (stdChargeInput) {
+                    const rawCharge = settings.standard_delivery_charge ?? settings.fast_delivery_charge;
                     const parsed = rawCharge != null ? parseFloat(rawCharge) : 0;
-                    fastChargeInput.value = !Number.isNaN(parsed) && parsed >= 0 ? parsed : '';
+                    stdChargeInput.value = !Number.isNaN(parsed) && parsed >= 0 ? parsed : '';
                 }
 
                 const businessEmailInput = document.getElementById('business-support-email');
@@ -7928,10 +7931,10 @@
 
         window.saveDeliverySettings = async function() {
             try {
-                const enabledEl = document.getElementById('fast-delivery-enabled');
-                const chargeEl = document.getElementById('fast-delivery-charge');
+                const enabledEl = document.getElementById('standard-delivery-enabled');
+                const chargeEl = document.getElementById('standard-delivery-charge');
 
-                const fast_delivery_enabled = !!(enabledEl && enabledEl.checked);
+                const standard_delivery_enabled = !!(enabledEl && enabledEl.checked);
                 const rawCharge = chargeEl ? (chargeEl.value || '').trim() : '';
 
                 // Allow flexible typing (e.g. "50 ₹" or spaces), keep only digits and dot
@@ -7939,22 +7942,22 @@
                     ? ''
                     : rawCharge.replace(/[^0-9.]/g, '');
 
-                const fast_delivery_charge = normalizedCharge === '' ? 0 : parseFloat(normalizedCharge);
+                const standard_delivery_charge = normalizedCharge === '' ? 0 : parseFloat(normalizedCharge);
 
-                if (Number.isNaN(fast_delivery_charge) || fast_delivery_charge < 0) {
-                    showAlert('Please enter a valid non-negative fast delivery charge.', 'error');
+                if (Number.isNaN(standard_delivery_charge) || standard_delivery_charge < 0) {
+                    showAlert('Please enter a valid non-negative delivery charge.', 'error');
                     if (chargeEl) chargeEl.focus();
                     return;
                 }
 
-                showAlert('Saving fast delivery settings...', 'info');
+                showAlert('Saving delivery settings...', 'info');
                 const response = await api.post('/admin/settings', {
-                    fast_delivery_enabled,
-                    fast_delivery_charge
+                    standard_delivery_enabled,
+                    standard_delivery_charge
                 });
 
                 if (response && (response.success || response.message)) {
-                    showAlert('Fast delivery settings updated successfully!', 'success');
+                    showAlert('Delivery settings updated successfully!', 'success');
                     await loadSiteSettings();
                 } else {
                     showAlert(response.error || 'Failed to save delivery settings', 'error');
@@ -9027,15 +9030,9 @@
                 const hasCharge = !Number.isNaN(deliveryCharge) && deliveryCharge > 0;
 
                 let deliveryLabel;
-                if (deliverySpeed === 'fast') {
-                    deliveryLabel = hasCharge
-                        ? `Fast (${formatCurrency(deliveryCharge)})`
-                        : 'Fast (Free)';
-                } else {
-                    deliveryLabel = hasCharge
-                        ? `Standard (+${formatCurrency(deliveryCharge)})`
-                        : 'Standard (Free)';
-                }
+                deliveryLabel = hasCharge
+                    ? `Standard (+${formatCurrency(deliveryCharge)})`
+                    : 'Standard (Free)';
 
                 const items = Array.isArray(o.items) ? o.items : [];
                 const itemsHtml = items.length
@@ -9137,7 +9134,6 @@
                 <div style="text-align:right;">
                     <div><strong>Invoice:</strong> ${escapeHtml(o.order_number||String(o.id))}</div>
                     <div><strong>Date:</strong> ${formatDate(o.created_at)}</div>
-                    <div><strong>Status:</strong> ${o.status||'—'}</div>
                 </div>
             </div>
             <div style="margin-bottom:1.5rem;">
@@ -9168,9 +9164,8 @@
             const cols = ['Order #','ID','Customer','Email','Phone','Items','Total','Delivery','Status','Date'];
             const rows = orders.map(o => {
                 const items = Array.isArray(o.items) ? o.items.map(it => `${it.product_name}x${it.quantity}`).join('; ') : '';
-                const deliverySpeed = (o.delivery_speed||'standard');
                 const deliveryCharge = parseFloat(o.delivery_charge)||0;
-                const deliveryLabel = `${deliverySpeed}${deliveryCharge > 0 ? ' +'+deliveryCharge : ' Free'}`;
+                const deliveryLabel = `Standard${deliveryCharge > 0 ? ' +'+deliveryCharge : ' Free'}`;
                 return [
                     o.order_number||o.id, o.id, o.full_name||'', o.email||'', o.phone||'',
                     items, parseFloat(o.total_amount||0).toFixed(2), deliveryLabel, o.status||'',

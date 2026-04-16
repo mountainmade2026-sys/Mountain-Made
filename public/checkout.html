@@ -195,22 +195,12 @@
                             <h4 style="margin: 0 0 0.75rem; font-size: 0.95rem;">Delivery Options</h4>
                             <div class="delivery-option">
                                 <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
-                                    <input type="radio" name="delivery_speed" value="standard" checked onchange="selectDeliverySpeed('standard')" style="margin-top:0.2rem;">
+                                    <input type="radio" name="delivery_speed" value="standard" checked style="margin-top:0.2rem;">
                                     <span>
                                         <strong>Standard Delivery</strong>
-                                        <span style="display:block; font-size:0.85rem; color: var(--text-secondary);">3-5 days · Free</span>
-                                    </span>
-                                </label>
-                            </div>
-                            <div class="delivery-option" id="fast-delivery-option">
-                                <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
-                                    <input type="radio" name="delivery_speed" value="fast" onchange="selectDeliverySpeed('fast')" style="margin-top:0.2rem;">
-                                    <span>
-                                        <strong>Fast Delivery</strong>
                                         <span style="display:block; font-size:0.85rem; color: var(--text-secondary);">
-                                            1-2 days · <span id="fast-delivery-charge-label">₹0.00</span>
+                                            3-5 days · <span id="standard-delivery-charge-label">Free</span>
                                         </span>
-                                        <span class="delivery-option-note">Fast delivery charge is managed from the Admin &gt; Site Settings.</span>
                                     </span>
                                 </label>
                             </div>
@@ -727,8 +717,8 @@
         let checkoutCartSubtotal = 0;
         let checkoutDeliverySpeed = 'standard';
         let checkoutSettings = {
-            fastDeliveryEnabled: false,
-            fastDeliveryCharge: 0
+            standardDeliveryEnabled: false,
+            standardDeliveryCharge: 0
         };
         let checkoutGpaySettings = {
             enabled: false,
@@ -942,8 +932,8 @@
             const deliveryEl = document.getElementById('order-delivery');
             const totalEl = document.getElementById('order-total');
 
-            const deliveryCharge = checkoutDeliverySpeed === 'fast' && checkoutSettings.fastDeliveryEnabled
-                ? (checkoutSettings.fastDeliveryCharge || 0)
+            const deliveryCharge = checkoutSettings.standardDeliveryEnabled
+                ? (checkoutSettings.standardDeliveryCharge || 0)
                 : 0;
 
             const subtotal = checkoutCartSubtotal || 0;
@@ -958,20 +948,6 @@
                 }
             }
             if (totalEl) totalEl.textContent = formatCurrency(total);
-        }
-
-        function selectDeliverySpeed(speed) {
-            if (speed === 'fast' && !checkoutSettings.fastDeliveryEnabled) {
-                // If fast delivery is disabled in settings, fall back to standard
-                checkoutDeliverySpeed = 'standard';
-                const standardRadio = document.querySelector('input[name="delivery_speed"][value="standard"]');
-                const fastRadio = document.querySelector('input[name="delivery_speed"][value="fast"]');
-                if (fastRadio) fastRadio.checked = false;
-                if (standardRadio) standardRadio.checked = true;
-            } else {
-                checkoutDeliverySpeed = speed === 'fast' ? 'fast' : 'standard';
-            }
-            updateOrderSummaryTotals();
         }
 
         async function updateCheckoutQuantity(itemId, quantity) {
@@ -1236,8 +1212,8 @@
         }
 
         function getCurrentCheckoutTotal() {
-            const deliveryCharge = checkoutDeliverySpeed === 'fast' && checkoutSettings.fastDeliveryEnabled
-                ? (checkoutSettings.fastDeliveryCharge || 0)
+            const deliveryCharge = checkoutSettings.standardDeliveryEnabled
+                ? (checkoutSettings.standardDeliveryCharge || 0)
                 : 0;
             const subtotal = computeCartSubtotal(cartData) || checkoutCartSubtotal || 0;
             return subtotal + deliveryCharge;
@@ -1625,15 +1601,17 @@
                 const resp = await api.get('/products/settings');
                 const settings = resp.settings || {};
 
-                const enabledRaw = (settings.fast_delivery_enabled ?? 'false').toString().toLowerCase();
+                const enabledRaw = (settings.standard_delivery_enabled ?? settings.fast_delivery_enabled ?? 'false').toString().toLowerCase();
                 const enabled = enabledRaw === 'true';
-                let charge = settings.fast_delivery_charge != null ? parseFloat(settings.fast_delivery_charge) : 0;
+                let charge = (settings.standard_delivery_charge ?? settings.fast_delivery_charge) != null
+                    ? parseFloat(settings.standard_delivery_charge ?? settings.fast_delivery_charge)
+                    : 0;
                 if (Number.isNaN(charge) || charge < 0) {
                     charge = 0;
                 }
 
-                checkoutSettings.fastDeliveryEnabled = enabled;
-                checkoutSettings.fastDeliveryCharge = charge;
+                checkoutSettings.standardDeliveryEnabled = enabled;
+                checkoutSettings.standardDeliveryCharge = charge;
 
                 checkoutGpaySettings.enabled = String(settings.gpay_enabled || 'false').toLowerCase() === 'true';
                 checkoutGpaySettings.payeeName = String(settings.gpay_payee_name || 'Mount Made').trim();
@@ -1652,34 +1630,19 @@
                     updateCodPincodeCheck();
                 }
 
-                const fastOption = document.getElementById('fast-delivery-option');
-                const fastLabel = document.getElementById('fast-delivery-charge-label');
-                const fastRadio = document.querySelector('input[name="delivery_speed"][value="fast"]');
-                const standardRadio = document.querySelector('input[name="delivery_speed"][value="standard"]');
+                const chargeLabel = document.getElementById('standard-delivery-charge-label');
 
-                if (fastLabel) {
-                    fastLabel.textContent = formatCurrency(charge);
-                }
-
-                if (!enabled) {
-                    if (fastOption) fastOption.style.display = 'none';
-                    // Ensure we default back to standard if fast was selected
-                    checkoutDeliverySpeed = 'standard';
-                    if (fastRadio) fastRadio.checked = false;
-                    if (standardRadio) standardRadio.checked = true;
-                } else {
-                    if (fastOption) fastOption.style.display = '';
+                if (chargeLabel) {
+                    chargeLabel.textContent = enabled && charge > 0 ? formatCurrency(charge) : 'Free';
                 }
 
                 updateOrderSummaryTotals();
                 updateGpayLabelAndPrefill();
             } catch (error) {
                 console.error('Failed to load checkout settings:', error);
-                // On error, keep defaults (standard delivery only / free)
-                const fastOption = document.getElementById('fast-delivery-option');
-                if (fastOption) fastOption.style.display = 'none';
-                checkoutSettings.fastDeliveryEnabled = false;
-                checkoutSettings.fastDeliveryCharge = 0;
+                // On error, keep defaults (standard delivery free)
+                checkoutSettings.standardDeliveryEnabled = false;
+                checkoutSettings.standardDeliveryCharge = 0;
                 checkoutDeliverySpeed = 'standard';
                 updateOrderSummaryTotals();
                 updateGpayLabelAndPrefill();
@@ -1826,8 +1789,8 @@
                 ? `GPay via ${formatGpayLabel(gpayDetailType)}: ${gpayDetailValue}${userNotes ? ' | ' + userNotes : ''}`
                 : userNotes;
 
-            const delivery_charge = checkoutDeliverySpeed === 'fast' && checkoutSettings.fastDeliveryEnabled
-                ? (checkoutSettings.fastDeliveryCharge || 0)
+            const delivery_charge = checkoutSettings.standardDeliveryEnabled
+                ? (checkoutSettings.standardDeliveryCharge || 0)
                 : 0;
             const currentSubtotal = computeCartSubtotal(cartData) || checkoutCartSubtotal || 0;
             const totalAmount = currentSubtotal + delivery_charge;

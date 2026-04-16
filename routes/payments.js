@@ -96,11 +96,11 @@ router.post('/razorpay/create', async (req, res) => {
     const { delivery_speed = 'standard' } = req.body || {};
 
     const settings = await getSiteSettings();
-    const fastEnabled = parseBool(settings.fast_delivery_enabled);
-    const fastCharge = parseNonNegativeNumber(settings.fast_delivery_charge);
+    const stdEnabled = parseBool(settings.standard_delivery_enabled || settings.fast_delivery_enabled);
+    const stdCharge = parseNonNegativeNumber(settings.standard_delivery_charge || settings.fast_delivery_charge);
 
-    const deliverySpeed = (delivery_speed || 'standard').toString().toLowerCase() === 'fast' ? 'fast' : 'standard';
-    const deliveryCharge = deliverySpeed === 'fast' && fastEnabled ? fastCharge : 0;
+    const deliverySpeed = 'standard';
+    const deliveryCharge = stdEnabled ? stdCharge : 0;
 
     const { cartItems, total } = await fetchServerCart(req.user.id, req.user.role);
     if (!cartItems.length) {

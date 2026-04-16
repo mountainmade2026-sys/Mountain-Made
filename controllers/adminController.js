@@ -429,7 +429,7 @@ exports.getCustomerDetails = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found.' });
     }
     
-    // Get customer orders with items
+    // Get customer orders with items (last 6 months only)
     const ordersQuery = await db.query(`
       SELECT o.id, o.user_id, o.total_amount, o.status, o.shipping_address, 
              o.payment_method, o.created_at, o.updated_at,
@@ -448,7 +448,7 @@ exports.getCustomerDetails = async (req, res) => {
              ) as items
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
-      WHERE o.user_id = $1
+      WHERE o.user_id = $1 AND o.created_at >= NOW() - INTERVAL '6 months'
       GROUP BY o.id
       ORDER BY o.created_at DESC
     `, [id]);
@@ -1948,6 +1948,8 @@ exports.updateSiteSettings = async (req, res) => {
       admin_license_expires_at,
       fast_delivery_enabled,
       fast_delivery_charge,
+      standard_delivery_enabled,
+      standard_delivery_charge,
       gpay_enabled,
       gpay_payee_name,
       gpay_upi_id,
@@ -2100,7 +2102,7 @@ exports.updateSiteSettings = async (req, res) => {
       }
     }
 
-    // Fast delivery toggle (stored as 'true'/'false' string for simplicity)
+    // Fast delivery toggle (legacy - kept for backward compat)
     // Accept null/undefined as "not provided", but 0 and false are valid values
     if (fast_delivery_enabled !== undefined && fast_delivery_enabled !== null) {
       const enabledValue =
@@ -2110,13 +2112,35 @@ exports.updateSiteSettings = async (req, res) => {
       updates.push({ key: 'fast_delivery_enabled', value: enabledValue ? 'true' : 'false' });
     }
 
-    // Fast delivery charge (validate numeric and non-negative)
+    // Fast delivery charge (legacy - kept for backward compat)
     // Accept 0 as a valid value (free fast delivery), but not null/undefined
     if (fast_delivery_charge !== undefined && fast_delivery_charge !== null) {
       const parsed = parseFloat(fast_delivery_charge);
       if (Number.isNaN(parsed) || parsed < 0) {
-        return res.status(400).json({ error: 'Fast delivery charge must be a valid non-negative number.' });
+        return res.status(400).json({ error: 'Delivery charge must be a valid non-negative number.' });
       }
+      updates.push({ key: 'fast_delivery_charge', value: parsed.toFixed(2) });
+    }
+
+    // Standard delivery toggle
+    if (standard_delivery_enabled !== undefined && standard_delivery_enabled !== null) {
+      const enabledValue =
+        typeof standard_delivery_enabled === 'boolean'
+          ? standard_delivery_enabled
+          : String(standard_delivery_enabled).toLowerCase() === 'true';
+      updates.push({ key: 'standard_delivery_enabled', value: enabledValue ? 'true' : 'false' });
+      // Also update legacy key for backward compatibility
+      updates.push({ key: 'fast_delivery_enabled', value: enabledValue ? 'true' : 'false' });
+    }
+
+    // Standard delivery charge
+    if (standard_delivery_charge !== undefined && standard_delivery_charge !== null) {
+      const parsed = parseFloat(standard_delivery_charge);
+      if (Number.isNaN(parsed) || parsed < 0) {
+        return res.status(400).json({ error: 'Delivery charge must be a valid non-negative number.' });
+      }
+      updates.push({ key: 'standard_delivery_charge', value: parsed.toFixed(2) });
+      // Also update legacy key for backward compatibility
       updates.push({ key: 'fast_delivery_charge', value: parsed.toFixed(2) });
     }
 
