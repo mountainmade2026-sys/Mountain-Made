@@ -714,6 +714,23 @@ const initializeDatabase = async () => {
       END $$;
     `);
 
+    // Ensure the status CHECK constraint includes 'out_for_delivery'
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conrelid = 'orders'::regclass
+            AND conname = 'orders_status_check'
+            AND pg_get_constraintdef(oid) NOT LIKE '%out_for_delivery%'
+        ) THEN
+          ALTER TABLE orders DROP CONSTRAINT orders_status_check;
+          ALTER TABLE orders ADD CONSTRAINT orders_status_check
+            CHECK (status IN ('pending','processing','shipped','out_for_delivery','delivered','cancelled'));
+        END IF;
+      END $$;
+    `);
+
     await client.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_order_number_unique
       ON orders (order_number);

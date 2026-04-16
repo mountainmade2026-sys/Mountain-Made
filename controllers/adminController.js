@@ -1012,18 +1012,35 @@ exports.markOutForDelivery = async (req, res) => {
     const { id } = req.params;
     const { courier_phone } = req.body;
 
+    // Pre-flight: verify the order exists and is in a valid state
+    const orderCheck = await db.query(
+      'SELECT id, status, order_number FROM orders WHERE id = $1',
+      [id]
+    );
+    if (!orderCheck.rows.length) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+    const currentStatus = orderCheck.rows[0].status;
+    if (['delivered', 'cancelled', 'out_for_delivery'].includes(currentStatus)) {
+      return res.status(400).json({ error: `Cannot dispatch — order is already "${currentStatus}".` });
+    }
+
+    // Check if order has an active (non-rejected) return request
+    try {
+      const returnCheck = await db.query(
+        `SELECT id FROM returns WHERE order_id = $1 AND status != 'rejected' LIMIT 1`,
+        [id]
+      );
+      if (returnCheck.rows.length) {
+        return res.status(400).json({ error: 'Cannot dispatch — this order has an active return request.' });
+      }
+    } catch (retErr) {
+      console.warn('[OFD] Returns check skipped:', retErr.message);
+    }
+
     // Generate 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
-
-    // Check if order has an active (non-rejected) return request
-    const returnCheck = await db.query(
-      `SELECT id FROM returns WHERE order_id = $1 AND status != 'rejected' LIMIT 1`,
-      [id]
-    );
-    if (returnCheck.rows.length) {
-      return res.status(400).json({ error: 'Cannot dispatch — this order has an active return request.' });
-    }
 
     const result = await db.query(
       `UPDATE orders
@@ -1039,7 +1056,7 @@ exports.markOutForDelivery = async (req, res) => {
     );
 
     if (!result.rows.length) {
-      return res.status(400).json({ error: 'Order not found, already delivered, or already out for delivery.' });
+      return res.status(400).json({ error: 'Order could not be updated. Status may have changed.' });
     }
 
     const order = result.rows[0];
