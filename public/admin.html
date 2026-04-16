@@ -1857,7 +1857,6 @@
                     <div class="filter-group">
                         <select class="filter-select" id="order-status-filter" onchange="filterOrders()">
                             <option value="">All Status</option>
-                            <option value="pending">Pending</option>
                             <option value="processing">Processing</option>
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
@@ -3754,8 +3753,8 @@
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
-                        <button class="btn btn-secondary btn-sm" onclick="resetChFilters()"><i class="fas fa-undo"></i> Reset</button>
-                        <button class="btn btn-primary btn-sm ch-export-btn" onclick="exportChCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.resetChFilters()"><i class="fas fa-undo"></i> Reset</button>
+                        <button type="button" class="btn btn-primary btn-sm ch-export-btn" onclick="exportChCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
                     </div>
                     <div id="ch-result-count"></div>
                     <!-- Table -->
@@ -6174,7 +6173,9 @@
                 showLoading('orders-list');
                 // Fetch ALL orders without status filter to enable dynamic client-side filtering
                 const resp = await api.get('/admin/orders');
-                const orders = resp.orders || [];
+                const allOrders = resp.orders || [];
+                // Exclude pending orders — they are managed in Customer Orders section until confirmed
+                const orders = allOrders.filter(o => o.status !== 'pending');
                 window._ordersCache = orders;
 
                 // Use filterOrders to render (ensures consistency with search/filter behavior)
@@ -6983,12 +6984,21 @@
         };
 
         window.resetChFilters = function() {
-            ['ch-search','ch-date-from','ch-date-to'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-            const yearEl = document.getElementById('ch-year-filter');
-            const statusEl = document.getElementById('ch-status-filter');
-            if (yearEl) yearEl.value = '';
-            if (statusEl) statusEl.value = '';
-            applyChFilters();
+            try {
+                const searchEl = document.getElementById('ch-search');
+                const dateFromEl = document.getElementById('ch-date-from');
+                const dateToEl = document.getElementById('ch-date-to');
+                const yearEl = document.getElementById('ch-year-filter');
+                const statusEl = document.getElementById('ch-status-filter');
+                if (searchEl) searchEl.value = '';
+                if (dateFromEl) dateFromEl.value = '';
+                if (dateToEl) dateToEl.value = '';
+                if (yearEl) yearEl.value = '';
+                if (statusEl) statusEl.value = '';
+                window.applyChFilters();
+            } catch (err) {
+                console.error('resetChFilters error:', err);
+            }
         };
 
         function renderChTable(orders) {
@@ -9264,9 +9274,13 @@
                 // Reload both pending customer orders view and full order history cache if open
                 if (window._currentSection === 'customers-orders') {
                     await loadCustomerOrders();
+                    // Also refresh order history cache so confirmed orders appear when navigating there
+                    loadOrders();
                 }
                 if (window._currentSection === 'order-history') {
                     await loadOrders();
+                    // Also refresh customer orders count badge
+                    loadCustomerOrders();
                 }
 
                 // Also refresh product stock and stock reports so restored
