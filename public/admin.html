@@ -1401,6 +1401,10 @@
                 <i class="fas fa-undo-alt"></i> Returns
                 <span id="returns-badge" class="badge-count" style="display: none;">0</span>
             </div>
+            <div class="admin-nav-item" onclick="showSection('complaints')">
+                <i class="fas fa-exclamation-triangle"></i> Complaints
+                <span id="complaints-badge" class="badge-count" style="display: none;">0</span>
+            </div>
 
             <div class="sidebar-section-title">Customers</div>
             <div class="admin-nav-item" onclick="showSection('customers')">
@@ -1920,6 +1924,30 @@
                 </div>
 
                 <div id="returns-list"></div>
+            </div>
+
+            <!-- Complaints Section -->
+            <div id="complaints" class="section">
+                <div class="admin-header">
+                    <h1 style="display:flex;align-items:center;gap:0.6rem;"><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> Complaints — Not Received</h1>
+                    <button class="btn btn-secondary" onclick="loadComplaints()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+
+                <div class="stats-grid" id="complaints-stats" style="margin-bottom:1.5rem;"></div>
+
+                <div class="controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="complaints-search" placeholder="Search complaints..." onkeyup="filterComplaints()">
+                    </div>
+                    <div class="filter-group">
+                        <input type="date" class="filter-select" id="complaints-date-from" onchange="filterComplaints()" title="From date">
+                        <input type="date" class="filter-select" id="complaints-date-to" onchange="filterComplaints()" title="To date">
+                        <button class="btn btn-secondary btn-sm" onclick="resetComplaintFilters()" style="white-space:nowrap;"><i class="fas fa-undo"></i> Reset</button>
+                    </div>
+                </div>
+
+                <div id="complaints-list"></div>
             </div>
 
             <!-- Customers Section -->
@@ -3884,7 +3912,7 @@
     // Admin dashboard with improved mobile handling
     (function(){
         const sectionIds = [
-                'dashboard','manage-products','upload-products','categories','homepage-sections','stock-reports','order-history','customers-orders','returns',
+                'dashboard','manage-products','upload-products','categories','homepage-sections','stock-reports','order-history','customers-orders','returns','complaints',
             'customers','activities','messages','users','wholesale','admin-license','site-settings','database-backup','ownership-document'
             ];
 
@@ -4016,6 +4044,7 @@
                 case 'order-history': loadOrders(); break;
                 case 'customers-orders': loadCustomerOrders(); break;
                 case 'returns': loadReturns(); break;
+                case 'complaints': loadComplaints(); break;
                 case 'customers': loadCustomers(); break;
                 case 'activities': loadActivities(); break;
                 case 'messages':
@@ -6818,6 +6847,214 @@
             } catch (err) {
                 showAlert(err.message || 'Failed to update return.', 'error');
             }
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // ── Complaints (Not Received) Section ────────────────────────────
+        // ══════════════════════════════════════════════════════════════════
+
+        window._complaintsCache = [];
+
+        async function loadComplaints() {
+            try {
+                showLoading('complaints-list');
+                const resp = await api.get('/admin/orders?status=not_received');
+                const complaints = resp.orders || [];
+                window._complaintsCache = complaints;
+                renderComplaintsStats(complaints);
+                renderComplaints(complaints);
+                // Update badge count
+                const badge = document.getElementById('complaints-badge');
+                if (badge) {
+                    badge.textContent = complaints.length;
+                    badge.style.display = complaints.length > 0 ? 'inline-flex' : 'none';
+                }
+            } catch (error) {
+                console.error('Load complaints error:', error);
+                document.getElementById('complaints-list').innerHTML = '<div class="empty-state"><p>Error loading complaints</p></div>';
+            }
+        }
+
+        function renderComplaintsStats(complaints) {
+            const container = document.getElementById('complaints-stats');
+            if (!container) return;
+            const total = complaints.length;
+            const totalAmount = complaints.reduce((sum, c) => sum + parseFloat(c.total_amount || 0), 0);
+            const today = new Date().toDateString();
+            const todayCount = complaints.filter(c => new Date(c.updated_at).toDateString() === today).length;
+            container.innerHTML = `
+                <div class="stat-card"><div class="stat-icon" style="background:#fef2f2;color:#dc2626;"><i class="fas fa-exclamation-triangle"></i></div><div class="stat-info"><div class="stat-number">${total}</div><div class="stat-label">Total Complaints</div></div></div>
+                <div class="stat-card"><div class="stat-icon" style="background:#fff7ed;color:#ea580c;"><i class="fas fa-calendar-day"></i></div><div class="stat-info"><div class="stat-number">${todayCount}</div><div class="stat-label">Today's Complaints</div></div></div>
+                <div class="stat-card"><div class="stat-icon" style="background:#fef9c3;color:#ca8a04;"><i class="fas fa-rupee-sign"></i></div><div class="stat-info"><div class="stat-number">${formatCurrency(totalAmount)}</div><div class="stat-label">Total Amount at Risk</div></div></div>
+            `;
+        }
+
+        function renderComplaints(complaints) {
+            const container = document.getElementById('complaints-list');
+            if (!complaints.length) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="font-size:3rem;color:var(--success);margin-bottom:1rem;"></i><p>No complaints! All deliveries are going smoothly.</p></div>';
+                return;
+            }
+
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr>' +
+                '<th>Order #</th><th>Customer</th><th>Items</th><th>Amount</th><th>Dispatched</th><th>Reported</th><th>Actions</th>' +
+                '</tr></thead><tbody>';
+
+            complaints.forEach(c => {
+                const items = (c.items || []).filter(i => i.id);
+                const itemsHtml = items.length
+                    ? items.map(i => `<div style="white-space:nowrap;">${i.product_name || 'Product'} &times; ${i.quantity}</div>`).join('')
+                    : '<span style="color:var(--text-muted);">\u2014</span>';
+
+                const dispatchedAt = c.out_for_delivery_at ? formatDate(c.out_for_delivery_at) : '\u2014';
+                const reportedAt = formatDate(c.updated_at);
+                const timeSinceDispatch = c.out_for_delivery_at ? getTimeDiff(c.out_for_delivery_at) : '\u2014';
+
+                html += `<tr>
+                    <td><strong>${c.order_number || '#' + c.id}</strong></td>
+                    <td>
+                        <div style="font-weight:600;">${c.full_name || 'No account'}</div>
+                        <small style="color:var(--text-muted);">${c.email || ''}</small>
+                        ${c.phone ? '<br><small style="color:var(--text-muted);">' + c.phone + '</small>' : ''}
+                    </td>
+                    <td style="font-size:0.85rem;">${itemsHtml}</td>
+                    <td><strong>${formatCurrency(c.total_amount)}</strong></td>
+                    <td><div>${dispatchedAt}</div><small style="color:var(--text-muted);">${timeSinceDispatch}</small></td>
+                    <td>${reportedAt}</td>
+                    <td>
+                        <button class="action-btn" style="background:#059669;color:#fff;" onclick="resolveComplaint(${c.id}, 'delivered')" title="Mark as Delivered">
+                            <i class="fas fa-check"></i> Delivered
+                        </button>
+                        <button class="action-btn" style="background:#2563eb;color:#fff;margin-top:4px;" onclick="resolveComplaint(${c.id}, 'out_for_delivery')" title="Re-dispatch">
+                            <i class="fas fa-redo"></i> Re-dispatch
+                        </button>
+                        <button class="action-btn" style="background:#6366f1;color:#fff;margin-top:4px;" onclick="viewComplaintDetails(${c.id})" title="View Details">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div></div>';
+            container.innerHTML = html;
+        }
+
+        function getTimeDiff(dateStr) {
+            if (!dateStr) return '';
+            const diff = Date.now() - new Date(dateStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 60) return mins + ' min ago';
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return hrs + 'h ago';
+            const days = Math.floor(hrs / 24);
+            return days + 'd ago';
+        }
+
+        function filterComplaints() {
+            const query = (document.getElementById('complaints-search')?.value || '').trim().toLowerCase();
+            const dateFrom = document.getElementById('complaints-date-from')?.value || '';
+            const dateTo = document.getElementById('complaints-date-to')?.value || '';
+            let filtered = window._complaintsCache || [];
+
+            if (query) {
+                filtered = filtered.filter(c =>
+                    (c.full_name || '').toLowerCase().includes(query) ||
+                    (c.email || '').toLowerCase().includes(query) ||
+                    (c.phone || '').toLowerCase().includes(query) ||
+                    (c.order_number || '').toLowerCase().includes(query) ||
+                    String(c.id).includes(query)
+                );
+            }
+            if (dateFrom) {
+                const from = new Date(dateFrom);
+                filtered = filtered.filter(c => new Date(c.updated_at) >= from);
+            }
+            if (dateTo) {
+                const to = new Date(dateTo + 'T23:59:59');
+                filtered = filtered.filter(c => new Date(c.updated_at) <= to);
+            }
+            renderComplaints(filtered);
+        }
+
+        function resetComplaintFilters() {
+            const search = document.getElementById('complaints-search');
+            const dateFrom = document.getElementById('complaints-date-from');
+            const dateTo = document.getElementById('complaints-date-to');
+            if (search) search.value = '';
+            if (dateFrom) dateFrom.value = '';
+            if (dateTo) dateTo.value = '';
+            renderComplaints(window._complaintsCache || []);
+        }
+
+        async function resolveComplaint(orderId, newStatus) {
+            const labels = { delivered: 'Delivered', out_for_delivery: 'Re-dispatched' };
+            const confirmMsg = newStatus === 'delivered'
+                ? 'Mark this order as delivered? This will resolve the complaint.'
+                : 'Re-dispatch this order? The customer will be notified again.';
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                await api.put('/admin/orders/' + orderId + '/status', { status: newStatus });
+                showAlert('Order marked as ' + (labels[newStatus] || newStatus) + '.', 'success');
+                await loadComplaints();
+            } catch (err) {
+                showAlert(err.message || 'Failed to update order.', 'error');
+            }
+        }
+
+        function viewComplaintDetails(orderId) {
+            const c = (window._complaintsCache || []).find(x => x.id == orderId);
+            if (!c) { showAlert('Complaint not found.', 'error'); return; }
+
+            const items = (c.items || []).filter(i => i.id);
+            const itemsHtml = items.map(i => `
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
+                    <div>
+                        <div style="font-weight:600;">${i.product_name || 'Product #' + i.product_id}</div>
+                        <div style="color:var(--text-muted);font-size:0.85rem;">Qty: ${i.quantity} &times; \u20B9${parseFloat(i.price || 0).toFixed(2)}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const dispatchedAt = c.out_for_delivery_at ? new Date(c.out_for_delivery_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '\u2014';
+            const reportedAt = new Date(c.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.id = 'complaint-detail-modal';
+            modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:560px;">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#fef2f2,#fee2e2);">
+                        <h3 style="color:#dc2626;display:flex;align-items:center;gap:0.5rem;"><i class="fas fa-exclamation-triangle"></i> Complaint \u2014 ${c.order_number || '#' + c.id}</h3>
+                        <button class="modal-close" onclick="document.getElementById('complaint-detail-modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;margin-bottom:1.25rem;">
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Customer</span><div style="font-weight:600;">${c.full_name || '\u2014'}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Email</span><div style="font-size:0.85rem;">${c.email || '\u2014'}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Phone</span><div style="font-size:0.85rem;">${c.phone || '\u2014'}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Amount</span><div style="font-weight:700;color:var(--danger);">${formatCurrency(c.total_amount)}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Dispatched</span><div>${dispatchedAt}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Reported</span><div>${reportedAt}</div></div>
+                        </div>
+                        ${c.delivery_address ? `<div style="margin-bottom:1.25rem;padding:0.75rem 1rem;background:var(--bg-light,#f8f9fa);border-radius:8px;border-left:4px solid var(--primary);"><div style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.4rem;">Delivery Address</div><div style="font-size:0.9rem;white-space:pre-wrap;">${(c.delivery_address || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>` : ''}
+                        ${c.courier_phone ? `<div style="margin-bottom:1.25rem;padding:0.75rem 1rem;background:#fffbea;border-radius:8px;border-left:4px solid var(--warning);"><div style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.4rem;">Courier Phone</div><div style="font-size:0.95rem;font-weight:600;"><a href="tel:${c.courier_phone}" style="color:var(--primary);text-decoration:none;">${c.courier_phone}</a></div></div>` : ''}
+                        <div><strong style="display:block;margin-bottom:0.5rem;">Order Items:</strong>${itemsHtml || '<p style="color:var(--text-muted);">No items listed</p>'}</div>
+                    </div>
+                    <div class="modal-footer" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('complaint-detail-modal').remove()">Close</button>
+                        <button class="btn" style="background:#059669;color:#fff;" onclick="document.getElementById('complaint-detail-modal').remove();resolveComplaint(${c.id},'delivered')">
+                            <i class="fas fa-check"></i> Mark Delivered
+                        </button>
+                        <button class="btn" style="background:#2563eb;color:#fff;" onclick="document.getElementById('complaint-detail-modal').remove();resolveComplaint(${c.id},'out_for_delivery')">
+                            <i class="fas fa-redo"></i> Re-dispatch
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -11801,6 +12038,17 @@
                 } catch (preloadErr) {
                     console.warn('Preload support inbox failed:', preloadErr);
                 }
+
+                // Preload complaints badge count
+                try {
+                    const compResp = await api.get('/admin/orders?status=not_received');
+                    const compCount = (compResp.orders || []).length;
+                    const compBadge = document.getElementById('complaints-badge');
+                    if (compBadge) {
+                        compBadge.textContent = compCount;
+                        compBadge.style.display = compCount > 0 ? 'inline-flex' : 'none';
+                    }
+                } catch (e) { /* ignore */ }
 
                 showSection('dashboard');
             } catch (error) {
