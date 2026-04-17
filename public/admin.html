@@ -1859,7 +1859,9 @@
                             <option value="">All Status</option>
                             <option value="processing">Processing</option>
                             <option value="shipped">Shipped</option>
+                            <option value="out_for_delivery">Out for Delivery</option>
                             <option value="delivered">Delivered</option>
+                            <option value="not_received">Not Received</option>
                             <option value="returned">Returned</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
@@ -9052,15 +9054,15 @@
 
                 // Derive effective status: if a non-rejected return exists, treat as 'returned'
                 const effectiveStatus = (o.return_status && o.return_status !== 'rejected') ? 'returned' : o.status;
-                const isFinal = effectiveStatus === 'delivered' || effectiveStatus === 'cancelled' || effectiveStatus === 'returned';
+                const isFinal = effectiveStatus === 'delivered' || effectiveStatus === 'cancelled' || effectiveStatus === 'returned' || effectiveStatus === 'not_received';
                 const isPending = effectiveStatus === 'pending';
                 const canTrack = effectiveStatus === 'processing' || effectiveStatus === 'shipped' || effectiveStatus === 'out_for_delivery';
-                const canOFD   = !['delivered','cancelled','out_for_delivery','returned'].includes(effectiveStatus);
+                const canOFD   = !['delivered','cancelled','out_for_delivery','returned','not_received'].includes(effectiveStatus);
                 const trackingBtn = canTrack
                     ? `<button class="action-btn" style="background:#6366f1;color:#fff;margin-top:4px;" onclick="openTrackingModal(${o.id})" title="Add/Update Tracking Info"><i class="fas fa-truck"></i> Tracking</button>`
                     : '';
                 const ofdBtn = canOFD
-                    ? `<button class="action-btn" style="background:#f97316;color:#fff;margin-top:4px;" onclick="openOfdModal(${o.id})" title="Mark Out for Delivery + Send OTP"><i class="fas fa-shipping-fast"></i> Out for Delivery</button>`
+                    ? `<button class="action-btn" style="background:#f97316;color:#fff;margin-top:4px;" onclick="openOfdModal(${o.id})" title="Mark Out for Delivery"><i class="fas fa-shipping-fast"></i> Out for Delivery</button>`
                     : effectiveStatus === 'out_for_delivery'
                     ? `<span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.3rem 0.7rem;background:#fff7ed;border:1.5px solid #f97316;color:#c2410c;border-radius:6px;font-size:0.78rem;font-weight:700;margin-top:4px;"><i class="fas fa-shipping-fast"></i> Out for Delivery</span>`
                     : '';
@@ -9104,7 +9106,7 @@
                         <td style="font-size:0.85rem;">${itemsHtml}</td>
                         <td>${formatCurrency(o.total_amount)}</td>
                         <td>${deliveryLabel}</td>
-                        <td><span class="badge badge-${effectiveStatus === 'delivered' ? 'success' : effectiveStatus === 'returned' ? 'info' : effectiveStatus === 'cancelled' ? 'danger' : effectiveStatus === 'out_for_delivery' ? 'warning' : 'warning'}">${effectiveStatus === 'out_for_delivery' ? 'Out for Delivery' : effectiveStatus}</span></td>
+                        <td><span class="badge badge-${effectiveStatus === 'delivered' ? 'success' : effectiveStatus === 'returned' ? 'info' : effectiveStatus === 'cancelled' ? 'danger' : effectiveStatus === 'not_received' ? 'danger' : effectiveStatus === 'out_for_delivery' ? 'warning' : 'warning'}">${effectiveStatus === 'out_for_delivery' ? 'Out for Delivery' : effectiveStatus === 'not_received' ? 'Not Received' : effectiveStatus}</span></td>
                         <td>${formatDate(o.created_at)}</td>
                         <td>
                             ${actionsHtml}
@@ -9410,7 +9412,7 @@
                     </div>
                     <div style="padding:1.25rem 1.5rem;">
                         <p style="margin:0 0 1rem;font-size:0.88rem;color:var(--text-light);">
-                            <i class="fas fa-info-circle"></i> This will generate a 6-digit OTP and send it to the customer via <strong>Email + SMS</strong>. The courier will receive the confirm-delivery link via <strong>SMS</strong>.
+                            <i class="fas fa-info-circle"></i> This will send a delivery notification to the customer via <strong>Email + SMS</strong> with a "Not Received" button they can use if the delivery doesn't arrive within 3 hours.
                         </p>
                         <div style="display:grid;gap:1rem;">
                             <div>
@@ -9421,9 +9423,9 @@
                             <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:0.85rem 1rem;font-size:0.85rem;color:#92400e;">
                                 <strong><i class="fas fa-envelope"></i> Customer notification:</strong>
                                 <ul style="margin:0.4rem 0 0;padding-left:1.2rem;">
-                                    <li>OTP sent to customer email + SMS</li>
-                                    <li>Courier gets confirm-delivery link via SMS</li>
-                                    <li>OTP is valid for 2 hours</li>
+                                    <li>Delivery notification sent to customer email + SMS</li>
+                                    <li>Customer gets a "Not Received" button (active after 3 hours)</li>
+                                    <li>Courier gets delivery link via SMS (if phone provided)</li>
                                 </ul>
                             </div>
                         </div>
@@ -9433,7 +9435,7 @@
                             style="padding:0.6rem 1.2rem;border:2px solid var(--border,#e5e7eb);border-radius:10px;background:transparent;font-weight:600;cursor:pointer;">Cancel</button>
                         <button onclick="saveOfdInfo(${orderId})"
                             style="padding:0.6rem 1.4rem;border:none;border-radius:10px;background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:0.4rem;">
-                            <i class="fas fa-paper-plane"></i> Send OTP &amp; Dispatch
+                            <i class="fas fa-paper-plane"></i> Notify &amp; Dispatch
                         </button>
                     </div>
                 </div>
@@ -9462,7 +9464,7 @@
                             <button onclick="document.getElementById('ofd-success-overlay').remove()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light)">&#10005;</button>
                         </div>
                         <div style="padding:1.25rem 1.5rem;">
-                            <p style="margin:0 0 1rem;font-size:0.9rem;color:var(--text-light);">OTP has been sent to the customer. Share the link below with the courier to confirm delivery:</p>
+                            <p style="margin:0 0 1rem;font-size:0.9rem;color:var(--text-light);">Delivery notification has been sent to the customer. Share the link below with the courier:</p>
                             <div style="display:flex;gap:0.5rem;align-items:center;">
                                 <input id="ofd-confirm-url" readonly value="${confirmUrl}" style="flex:1;padding:0.6rem 0.8rem;border:2px solid #d1d5db;border-radius:8px;font-size:0.85rem;background:#f9fafb;">
                                 <button onclick="navigator.clipboard.writeText(document.getElementById('ofd-confirm-url').value);this.innerHTML='<i class=\'fas fa-check\'></i> Copied';this.style.background='#059669';setTimeout(()=>{this.innerHTML='<i class=\'fas fa-copy\'></i> Copy';this.style.background='#2563eb';},2000)" style="padding:0.6rem 1rem;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:0.3rem;">
@@ -9470,10 +9472,10 @@
                                 </button>
                             </div>
                             <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                                <a href="https://wa.me/${courier_phone ? (courier_phone.length === 10 ? '91' + courier_phone : courier_phone) : ''}?text=${encodeURIComponent('Mount Made Delivery\n\nYou have been assigned a delivery.\n\n1. Deliver the package to the customer.\n2. Ask customer for the 6-digit OTP.\n3. Open this link and enter OTP:\n' + confirmUrl)}" target="_blank" style="padding:0.5rem 1rem;border:none;border-radius:8px;background:#25d366;color:#fff;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;">
+                                <a href="https://wa.me/${courier_phone ? (courier_phone.length === 10 ? '91' + courier_phone : courier_phone) : ''}?text=${encodeURIComponent('Mount Made Delivery\n\nYou have been assigned a delivery.\n\n1. Deliver the package to the customer.\n2. Confirm delivery from the admin panel once done.\n\nDelivery Link:\n' + confirmUrl)}" target="_blank" style="padding:0.5rem 1rem;border:none;border-radius:8px;background:#25d366;color:#fff;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;">
                                     <i class="fab fa-whatsapp"></i> Send via WhatsApp
                                 </a>
-                                <a href="sms:${courier_phone ? (courier_phone.length === 10 ? '+91' + courier_phone : '+' + courier_phone) : ''}?body=${encodeURIComponent('Mount Made Delivery - Open this link and enter customer OTP to confirm: ' + confirmUrl)}" style="padding:0.5rem 1rem;border:none;border-radius:8px;background:#6366f1;color:#fff;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;">
+                                <a href="sms:${courier_phone ? (courier_phone.length === 10 ? '+91' + courier_phone : '+' + courier_phone) : ''}?body=${encodeURIComponent('Mount Made Delivery - Deliver the package and confirm from admin panel. Link: ' + confirmUrl)}" style="padding:0.5rem 1rem;border:none;border-radius:8px;background:#6366f1;color:#fff;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;">
                                     <i class="fas fa-sms"></i> Send via SMS
                                 </a>
                             </div>

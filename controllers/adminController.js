@@ -1006,7 +1006,7 @@ exports.updateOrderTracking = async (req, res) => {
   }
 };
 
-// Mark order as Out for Delivery — generate OTP, notify customer + courier
+// Mark order as Out for Delivery — notify customer with delivery email
 exports.markOutForDelivery = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1038,21 +1038,15 @@ exports.markOutForDelivery = async (req, res) => {
       console.warn('[OFD] Returns check skipped:', retErr.message);
     }
 
-    // Generate 6-digit OTP
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const otpExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
-
     const result = await db.query(
       `UPDATE orders
        SET status                  = 'out_for_delivery',
-           delivery_otp            = $1,
-           delivery_otp_expires_at = $2,
            out_for_delivery_at     = CURRENT_TIMESTAMP,
-           courier_phone           = $3,
+           courier_phone           = $1,
            updated_at              = CURRENT_TIMESTAMP
-       WHERE id = $4 AND status NOT IN ('delivered', 'cancelled', 'out_for_delivery')
+       WHERE id = $2 AND status NOT IN ('delivered', 'cancelled', 'out_for_delivery')
        RETURNING *`,
-      [otp, otpExpiresAt, courier_phone || null, id]
+      [courier_phone || null, id]
     );
 
     if (!result.rows.length) {
@@ -1071,9 +1065,18 @@ exports.markOutForDelivery = async (req, res) => {
     const baseUrl = String(process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
     const confirmUrl = `${baseUrl}/delivery-confirm?order=${id}`;
 
+    // Generate signed "Not Received" link for customer email (valid 6 hours)
+    const jwt = require('jsonwebtoken');
+    const notReceivedToken = jwt.sign(
+      { type: 'delivery', id: String(order.id), action: 'not_received' },
+      process.env.JWT_SECRET,
+      { expiresIn: '6h' }
+    );
+    const notReceivedUrl = `${baseUrl}/api/email-actions/delivery/${order.id}/not-received?token=${notReceivedToken}`;
+
     // Fire-and-forget: notify customer (email + SMS) and courier (SMS)
     Promise.resolve().then(async () => {
-      const { sendDeliveryOtpEmail } = require('../utils/emailService');
+      const { sendDeliveryNotificationEmail } = require('../utils/emailService');
 
       // Helper: format phone to E.164 for Twilio SMS
       const toE164 = (ph) => {
@@ -1085,21 +1088,20 @@ exports.markOutForDelivery = async (req, res) => {
         return `+${cleaned}`;
       };
 
-      // 1. Email OTP to customer
+      // 1. Email notification to customer with "Not Received" button
       if (customer.email) {
         try {
-          await sendDeliveryOtpEmail(customer.email, customer.full_name || 'Customer', order.order_number || order.id, otp);
-        } catch (e) { console.error('[OFD] Email OTP failed:', e.message); }
+          await sendDeliveryNotificationEmail(customer.email, customer.full_name || 'Customer', order.order_number || order.id, notReceivedUrl);
+        } catch (e) { console.error('[OFD] Email notification failed:', e.message); }
       }
 
-      // 2. SMS OTP to customer
+      // 2. SMS notification to customer
       if (customer.phone && twilioClient && TWILIO_FROM_NUMBER) {
         try {
           const customerSms =
             `Mount Made - Your order ${order.order_number || order.id} is Out for Delivery!\n\n` +
-            `Your Delivery OTP: ${otp}\n\n` +
-            `Share this OTP with the delivery person to confirm receipt.\n` +
-            `Do NOT share with anyone else. Valid for 2 hours.`;
+            `Your product will soon reach your doorsteps.\n\n` +
+            `If you do not receive your delivery within 3 hours, please check your email and click the "Not Received" button.`;
           await twilioClient.messages.create({
             from: TWILIO_FROM_NUMBER,
             to: toE164(customer.phone),
@@ -1116,8 +1118,7 @@ exports.markOutForDelivery = async (req, res) => {
             `Order: ${order.order_number || order.id}\n\n` +
             `Instructions:\n` +
             `1. Deliver the package to the customer.\n` +
-            `2. Ask customer for their 6-digit OTP.\n` +
-            `3. Open link below, enter OTP & press Confirm.\n\n` +
+            `2. Confirm delivery from the admin panel once done.\n\n` +
             `${confirmUrl}`;
           await twilioClient.messages.create({
             from: TWILIO_FROM_NUMBER,
@@ -1128,7 +1129,7 @@ exports.markOutForDelivery = async (req, res) => {
       }
     });
 
-    res.json({ message: 'Order marked as out for delivery. OTP sent to customer.', order, confirmUrl });
+    res.json({ message: 'Order marked as out for delivery. Notification sent to customer.', order, confirmUrl });
   } catch (error) {
     console.error('markOutForDelivery error:', error);
     res.status(500).json({ error: 'Failed to mark out for delivery.', detail: error.message });

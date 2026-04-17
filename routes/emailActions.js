@@ -250,6 +250,87 @@ router.get('/order/:id/:action', async (req, res) => {
   }
 });
 
+// ── Delivery: Not Received ───────────────────────────────────────────────
+router.get('/delivery/:id/not-received', async (req, res) => {
+  const { id } = req.params;
+  const { token } = req.query;
+
+  const { error } = verifyToken(token, 'delivery', id, 'not_received');
+  if (error) {
+    return res.status(401).send(page('🔒', '#dc3545', 'Link Invalid or Expired', error));
+  }
+
+  try {
+    const checkResult = await db.query(
+      `SELECT o.id, o.status, o.order_number, o.out_for_delivery_at,
+              u.full_name AS customer_name, u.email AS customer_email, u.phone AS customer_phone
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.id = $1`,
+      [id]
+    );
+
+    if (!checkResult.rows.length) {
+      return res.status(404).send(page('🔍', '#dc3545', 'Order Not Found', 'The order could not be found in the system.'));
+    }
+
+    const order = checkResult.rows[0];
+
+    // Already delivered — no action needed
+    if (order.status === 'delivered') {
+      return res.send(page('✅', '#28a745', 'Already Delivered', `Order <strong>${order.order_number}</strong> has already been delivered successfully. If you have a concern, please contact us.`));
+    }
+
+    // Only allow reporting if order is out_for_delivery
+    if (order.status !== 'out_for_delivery') {
+      return res.send(page('ℹ️', '#17a2b8', 'Cannot Report', `Order <strong>${order.order_number}</strong> is currently "${order.status}". Not-received reports can only be made for orders that are out for delivery.`));
+    }
+
+    // Check if 3 hours have passed since out_for_delivery_at
+    const ofdAt = order.out_for_delivery_at ? new Date(order.out_for_delivery_at) : null;
+    const threeHoursMs = 3 * 60 * 60 * 1000;
+    const now = new Date();
+
+    if (ofdAt && (now - ofdAt) < threeHoursMs) {
+      const remainingMs = threeHoursMs - (now - ofdAt);
+      const remainingMin = Math.ceil(remainingMs / 60000);
+      return res.send(page('⏳', '#f59e0b', 'Please Wait',
+        `Your order <strong>${order.order_number}</strong> was dispatched recently. Please allow up to 3 hours for delivery.<br><br>You can report non-delivery in approximately <strong>${remainingMin} minute${remainingMin !== 1 ? 's' : ''}</strong>.<br><br>If urgent, please contact us directly.`
+      ));
+    }
+
+    // Mark order as not_received and notify admin
+    await db.query(
+      `UPDATE orders SET status = 'not_received', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [id]
+    );
+
+    // Notify admin via email
+    try {
+      await sendActionResultEmail({
+        subject: `🚨 Delivery Not Received: ${order.order_number}`,
+        icon: '🚨', color: '#dc2626',
+        title: 'Delivery Not Received',
+        detail: `Customer <strong>${order.customer_name || 'N/A'}</strong> has reported that they did not receive their delivery for order <strong>${order.order_number}</strong>.<br><br>
+                 <strong>Customer Email:</strong> ${order.customer_email || 'N/A'}<br>
+                 <strong>Customer Phone:</strong> ${order.customer_phone || 'N/A'}<br>
+                 <strong>Dispatched At:</strong> ${ofdAt ? ofdAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'N/A'}<br>
+                 <strong>Reported At:</strong> ${now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST<br><br>
+                 Please investigate and take appropriate action from the admin panel.`
+      });
+    } catch (emailErr) {
+      console.error('[NOT-RECEIVED] Admin notification email failed:', emailErr.message);
+    }
+
+    return res.send(page('📋', '#dc2626', 'Report Submitted',
+      `Your non-delivery report for order <strong>${order.order_number}</strong> has been submitted successfully.<br><br>Our team has been notified and will investigate this immediately. We will reach out to you shortly.<br><br>Thank you for your patience.`
+    ));
+  } catch (err) {
+    console.error('Email action delivery not-received error:', err);
+    return res.status(500).send(page('⚠️', '#dc3545', 'Server Error', 'An unexpected error occurred. Please try again or contact support.'));
+  }
+});
+
 // ── Return: Approve / Decline ────────────────────────────────────────────
 router.get('/return/:id/:action', async (req, res) => {
   const { id, action } = req.params;
