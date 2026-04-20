@@ -286,16 +286,16 @@ router.get('/delivery/:id/not-received', async (req, res) => {
       return res.send(page('ℹ️', '#17a2b8', 'Cannot Report', `Order <strong>${order.order_number}</strong> is currently "${order.status}". Not-received reports can only be made for orders that are out for delivery.`));
     }
 
-    // Check if 3 hours have passed since out_for_delivery_at
+    // Check if 2 hours have passed since out_for_delivery_at
     const ofdAt = order.out_for_delivery_at ? new Date(order.out_for_delivery_at) : null;
-    const threeHoursMs = 3 * 60 * 60 * 1000;
+    const twoHoursMs = 2 * 60 * 60 * 1000;
     const now = new Date();
 
-    if (ofdAt && (now - ofdAt) < threeHoursMs) {
-      const remainingMs = threeHoursMs - (now - ofdAt);
+    if (ofdAt && (now - ofdAt) < twoHoursMs) {
+      const remainingMs = twoHoursMs - (now - ofdAt);
       const remainingMin = Math.ceil(remainingMs / 60000);
       return res.send(page('⏳', '#f59e0b', 'Please Wait',
-        `Your order <strong>${order.order_number}</strong> was dispatched recently. Please allow up to 3 hours for delivery.<br><br>You can report non-delivery in approximately <strong>${remainingMin} minute${remainingMin !== 1 ? 's' : ''}</strong>.<br><br>If urgent, please contact us directly.`
+        `Your order <strong>${order.order_number}</strong> was dispatched recently. Please allow up to 2 hours for delivery.<br><br>You can report non-delivery in approximately <strong>${remainingMin} minute${remainingMin !== 1 ? 's' : ''}</strong>.<br><br>If urgent, please contact us directly.`
       ));
     }
 

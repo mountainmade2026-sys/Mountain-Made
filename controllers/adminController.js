@@ -1109,7 +1109,7 @@ exports.markOutForDelivery = async (req, res) => {
           const customerSms =
             `Mount Made - Your order ${order.order_number || order.id} is Out for Delivery!\n\n` +
             `Your product will soon reach your doorsteps.\n\n` +
-            `If you do not receive your delivery within 3 hours, please check your email and click the "Not Received" button.`;
+            `If you do not receive your delivery within 2 hours, please check your email and click the "Not Received" button.`;
           await twilioClient.messages.create({
             from: TWILIO_FROM_NUMBER,
             to: toE164(customer.phone),
