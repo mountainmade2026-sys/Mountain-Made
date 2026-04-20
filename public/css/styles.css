@@ -764,38 +764,55 @@ html[data-theme="dark"] .price-discount {
 
 /* Hamburger — always visible on all screen sizes in the new ornate design */
 .mobile-menu-toggle {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid rgba(212,175,55,0.45);
-  background: rgba(255,255,255,0.10);
+  border: 2px solid rgba(212,175,55,0.85);
+  background: rgba(212,175,55,0.15);
   color: #ffffff;
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   cursor: pointer;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   transition: border-color var(--transition-fast), background var(--transition-fast);
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   position: relative;
-  z-index: 5;
+  z-index: 10;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   -webkit-appearance: none;
   appearance: none;
   outline: none;
+  line-height: 1;
+  overflow: visible;
 }
 
-.mobile-menu-toggle i {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: inherit;
-  color: inherit;
+.mobile-menu-toggle i,
+.mobile-menu-toggle .fa-bars,
+.mobile-menu-toggle .fa-times {
+  display: inline-block !important;
+  font-size: 1.3rem;
+  color: #ffffff;
   pointer-events: none;
+  line-height: 1;
+}
+
+/* Fallback hamburger icon if Font Awesome fails to load */
+.mobile-menu-toggle::after {
+  content: '☰';
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1.4rem;
+  color: #ffffff;
+  position: absolute;
+  z-index: 0;
+}
+.mobile-menu-toggle i {
+  position: relative;
+  z-index: 1;
 }
 
 .mobile-menu-toggle:hover {
@@ -1811,7 +1828,7 @@ body.auth-ready #auth-buttons { visibility: visible; }
   .deliver-bar-label { font-size: 0.6rem; }
   .deliver-bar-value { font-size: 0.78rem; max-width: 100%; }
   .navbar-brand .logo-icon { font-size: 1.4rem; }
-  .mobile-menu-toggle { width: 40px; height: 40px; font-size: 1.1rem; }
+  .mobile-menu-toggle { width: 44px; height: 44px; min-width: 44px; min-height: 44px; font-size: 1.3rem; }
 
   .navbar-actions { gap: var(--space-1); }
   #auth-buttons { gap: var(--space-1); flex-wrap: nowrap; }
