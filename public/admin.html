@@ -9351,9 +9351,7 @@
                 const isPending = effectiveStatus === 'pending';
                 const canTrack = effectiveStatus === 'processing' || effectiveStatus === 'shipped' || effectiveStatus === 'out_for_delivery';
                 const canOFD   = !['delivered','cancelled','out_for_delivery','returned','not_received'].includes(effectiveStatus);
-                const trackingBtn = canTrack
-                    ? `<button class="action-btn" style="background:#6366f1;color:#fff;margin-top:4px;" onclick="openTrackingModal(${o.id})" title="Add/Update Tracking Info"><i class="fas fa-truck"></i> Tracking</button>`
-                    : '';
+                const trackingBtn = '';
                 const ofdBtn = canOFD
                     ? `<button class="action-btn" style="background:#f97316;color:#fff;margin-top:4px;" onclick="openOfdModal(${o.id})" title="Mark Out for Delivery"><i class="fas fa-shipping-fast"></i> Out for Delivery</button>`
                     : effectiveStatus === 'out_for_delivery'
