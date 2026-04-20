@@ -6273,6 +6273,63 @@
             }
         }
 
+        function renderCustomerOrdersList(orders) {
+            updateCustomerOrdersBadge(orders.length);
+
+            if (!orders.length) {
+                document.getElementById('customer-orders-list').innerHTML = '<div class="empty-state"><p>No pending customer orders</p></div>';
+                return;
+            }
+
+            let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+            orders.forEach(o => {
+                const statusBadgeClass = o.status === 'delivered' ? 'badge-success' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning';
+                const statusLabel = o.status || 'pending';
+
+                const deliveryCharge = o.delivery_charge != null ? parseFloat(o.delivery_charge) : 0;
+                const hasCharge = !Number.isNaN(deliveryCharge) && deliveryCharge > 0;
+                const deliveryLabel = hasCharge
+                    ? `Standard (+${formatCurrency(deliveryCharge)})`
+                    : 'Standard (Free)';
+
+                const items = Array.isArray(o.items) ? o.items : [];
+                const itemsHtml = items.length
+                    ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
+                    : '<span style="color:var(--text-muted);">—</span>';
+
+                const actionsHtml = o.status === 'pending'
+                    ? `
+                        <button class="action-btn action-btn-success" onclick="updateOrderStatus(${o.id}, 'processing')">
+                            <i class="fas fa-check"></i> Confirm
+                        </button>
+                        <button class="action-btn action-btn-reject" onclick="updateOrderStatus(${o.id}, 'cancelled')">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                      `
+                    : '<span class="badge badge-secondary">No actions</span>';
+
+                html += `
+                    <tr>
+                        <td>#${o.id}</td>
+                        <td>${o.order_number || '-'}</td>
+                        <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small></td>
+                        <td style="font-size:0.85rem;">${itemsHtml}</td>
+                        <td>${formatCurrency(o.total_amount)}</td>
+                        <td>${deliveryLabel}</td>
+                        <td><span class="badge ${statusBadgeClass}">${statusLabel}</span></td>
+                        <td>${formatDate(o.created_at)}</td>
+                        <td>
+                            <div class="table-actions">
+                                ${actionsHtml}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table></div></div>';
+            document.getElementById('customer-orders-list').innerHTML = html;
+        }
+
         async function loadCustomerOrders() {
             try {
                 showLoading('customer-orders-list');
@@ -6282,63 +6339,7 @@
                 const orders = resp.orders || [];
                 window._customerOrdersCache = orders;
 
-                updateCustomerOrdersBadge(orders.length);
-
-                if (!orders.length) {
-                    document.getElementById('customer-orders-list').innerHTML = '<div class="empty-state"><p>No pending customer orders</p></div>';
-                    return;
-                }
-
-                let html = '<div class="data-table-container"><div class="data-table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
-                orders.forEach(o => {
-                    const statusBadgeClass = o.status === 'delivered' ? 'badge-success' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning';
-                    const statusLabel = o.status || 'pending';
-
-                    const deliverySpeed = (o.delivery_speed || 'standard').toLowerCase();
-                    const deliveryCharge = o.delivery_charge != null ? parseFloat(o.delivery_charge) : 0;
-                    const hasCharge = !Number.isNaN(deliveryCharge) && deliveryCharge > 0;
-
-                    let deliveryLabel;
-                    deliveryLabel = hasCharge
-                        ? `Standard (+${formatCurrency(deliveryCharge)})`
-                        : 'Standard (Free)';
-
-                    const items = Array.isArray(o.items) ? o.items : [];
-                    const itemsHtml = items.length
-                        ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
-                        : '<span style="color:var(--text-muted);">—</span>';
-
-                    const actionsHtml = o.status === 'pending'
-                        ? `
-                            <button class="action-btn action-btn-success" onclick="updateOrderStatus(${o.id}, 'processing')">
-                                <i class="fas fa-check"></i> Confirm
-                            </button>
-                            <button class="action-btn action-btn-reject" onclick="updateOrderStatus(${o.id}, 'cancelled')">
-                                <i class="fas fa-times"></i> Reject
-                            </button>
-                          `
-                        : '<span class="badge badge-secondary">No actions</span>';
-
-                    html += `
-                        <tr>
-                            <td>#${o.id}</td>
-                            <td>${o.order_number || '-'}</td>
-                            <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small></td>
-                            <td style="font-size:0.85rem;">${itemsHtml}</td>
-                            <td>${formatCurrency(o.total_amount)}</td>
-                            <td>${deliveryLabel}</td>
-                            <td><span class="badge ${statusBadgeClass}">${statusLabel}</span></td>
-                            <td>${formatDate(o.created_at)}</td>
-                            <td>
-                                <div class="table-actions">
-                                    ${actionsHtml}
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
-                html += '</tbody></table></div></div>';
-                document.getElementById('customer-orders-list').innerHTML = html;
+                renderCustomerOrdersList(orders);
             } catch (error) {
                 console.error('Load customer orders error:', error);
                 document.getElementById('customer-orders-list').innerHTML = '<div class="empty-state"><p>Error loading customer orders</p></div>';
@@ -6559,6 +6560,18 @@
                         }
                         notifyNewPendingOrder();
                     }
+
+                    // If admin is currently viewing Customer Orders, always refresh the list
+                    // so new orders appear instantly without needing a manual refresh.
+                    if (window._currentSection === 'customers-orders') {
+                        window._customerOrdersCache = orders;
+                        updateCustomerOrdersBadge(orders.length);
+                        if (typeof renderCustomerOrdersList === 'function') {
+                            renderCustomerOrdersList(orders);
+                        } else {
+                            loadCustomerOrders();
+                        }
+                    }
                 } catch (e) {
                     if (isAuthExpiredError(e)) {
                         if (!window.__adminAuthRedirecting) {
@@ -6574,7 +6587,7 @@
 
             // First run primes the last-seen value
             tick(true);
-            __pendingOrdersWatcherTimer = setInterval(() => tick(false), 15000);
+            __pendingOrdersWatcherTimer = setInterval(() => tick(false), 8000);
         }
 
         // ══════════════════════════════════════════════════════════════════
