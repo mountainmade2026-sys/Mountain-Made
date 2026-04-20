@@ -2061,7 +2061,6 @@ async function initApp() {
       const icon = mobileToggle.querySelector('i');
       if (icon) icon.className = 'fas fa-bars';
       mobileToggle.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
     };
 
     const openMobileMenuNav = () => {
@@ -2070,7 +2069,6 @@ async function initApp() {
       const icon = mobileToggle.querySelector('i');
       if (icon) icon.className = 'fas fa-times';
       mobileToggle.setAttribute('aria-expanded', 'true');
-      document.body.style.overflow = 'hidden';
     };
 
     mobileToggle.addEventListener('click', (e) => {
