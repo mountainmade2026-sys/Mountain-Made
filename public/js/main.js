@@ -568,9 +568,13 @@ const auth = {
       if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
 
       if (roleEl) {
-        if (this.isAdmin())      roleEl.textContent = 'Admin';
-        else if (this.isWholesale()) roleEl.textContent = 'Wholesale';
-        else                         roleEl.textContent = 'Customer';
+        const role = this.isAdmin() ? 'Admin' : this.isWholesale() ? 'Wholesale' : 'Customer';
+        const phone = String(this.currentUser?.phone || '').trim();
+        const email = String(this.currentUser?.email || '').trim();
+        roleEl.innerHTML =
+          `<span style="display:block;">${role}</span>` +
+          (phone ? `<span style="display:block;font-size:0.78rem;opacity:0.85;margin-top:2px;"><i class="fas fa-phone" style="font-size:0.7rem;margin-right:3px;"></i>${phone}</span>` : '') +
+          (email ? `<span style="display:block;font-size:0.78rem;opacity:0.85;margin-top:1px;word-break:break-all;"><i class="fas fa-envelope" style="font-size:0.7rem;margin-right:3px;"></i>${email}</span>` : '');
       }
     });
 
