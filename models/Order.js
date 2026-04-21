@@ -95,6 +95,7 @@ class Order {
         payment_gateway_signature = null,
         paid_at = null,
         notes,
+        payment_details = null,
         items,
         delivery_speed = null,
         delivery_charge = 0
@@ -140,11 +141,12 @@ class Order {
           payment_gateway_signature,
           paid_at,
           notes,
+          payment_details,
           status,
           delivery_speed,
           delivery_charge
         )
-        VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'unpaid'), $8, $9, $10, $11, $12, $13, $14, 'pending', $15, $16)
+        VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'unpaid'), $8, $9, $10, $11, $12, $13, $14, $15, 'pending', $16, $17)
         RETURNING *
       `;
 
@@ -168,6 +170,7 @@ class Order {
             payment_gateway_signature,
             paid_at,
             notes,
+            payment_details ? JSON.stringify(payment_details) : null,
             delivery_speed,
             delivery_charge
           ]);

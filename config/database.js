@@ -712,6 +712,14 @@ const initializeDatabase = async () => {
         ) THEN
           ALTER TABLE orders ADD COLUMN courier_phone VARCHAR(20);
         END IF;
+
+        -- Customer payment details for refund reference (UPI ID, phone, etc.)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'payment_details'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN payment_details JSONB;
+        END IF;
       END $$;
     `);
 
