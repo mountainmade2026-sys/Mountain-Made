@@ -5364,7 +5364,7 @@
                             html += `
                                 <tr>
                                     <td>#${o.id}</td>
-                                    <td>${o.full_name || 'No account'}</td>
+                                    <td>${escapeHtml(o.full_name || 'No account')}</td>
                                     <td>${formatCurrency(o.total_amount)}</td>
                                     <td><span class="badge ${statusClass}">${o.status || 'pending'}</span></td>
                                     <td>${formatDate(o.created_at)}</td>
@@ -5414,7 +5414,7 @@
                                         <div style="display:flex; align-items:center; gap:0.75rem;">
                                             ${img ? `<img src="${img}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid var(--border);"/>` : ''}
                                             <div>
-                                                <div style="font-weight:600; color:var(--text-dark);">${p.name || 'Unnamed'}</div>
+                                                <div style="font-weight:600; color:var(--text-dark);">${escapeHtml(p.name || 'Unnamed')}</div>
                                                 <div style="font-size:0.8rem; color:var(--text-muted);">ID: #${p.id}</div>
                                             </div>
                                         </div>
@@ -6057,10 +6057,10 @@
                         rowsHtml += `
                             <tr ${rowBg}>
                                 <td>${formatDate(t.order_date)}</td>
-                                <td><strong>${t.order_number}</strong>${refBadge}</td>
+                                <td><strong>${escapeHtml(t.order_number)}</strong>${refBadge}</td>
                                 <td>
-                                    <div>${t.customer_name || 'No account'}</div>
-                                    ${t.customer_email ? `<div style="font-size: 0.85rem; color: var(--text-muted);">${t.customer_email}</div>` : ''}
+                                    <div>${escapeHtml(t.customer_name || 'No account')}</div>
+                                    ${t.customer_email ? `<div style="font-size: 0.85rem; color: var(--text-muted);">${escapeHtml(t.customer_email)}</div>` : ''}
                                 </td>
                                 <td><strong style="${qtyColor}">${qtyPrefix}${qty}</strong></td>
                                 <td>${stockBefore}</td>
@@ -6294,7 +6294,7 @@
 
                 const items = Array.isArray(o.items) ? o.items : [];
                 const itemsHtml = items.length
-                    ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
+                    ? items.map(it => `<div style="white-space:nowrap;">${escapeHtml(it.product_name)} &times; ${it.quantity}</div>`).join('')
                     : '<span style="color:var(--text-muted);">—</span>';
 
                 const actionsHtml = o.status === 'pending'
@@ -6311,8 +6311,8 @@
                 html += `
                     <tr>
                         <td>#${o.id}</td>
-                        <td>${o.order_number || '-'}</td>
-                        <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small></td>
+                        <td>${escapeHtml(o.order_number || '-')}</td>
+                        <td>${escapeHtml(o.full_name || 'No account')}<br><small>${escapeHtml(o.email || '')}</small></td>
                         <td style="font-size:0.85rem;">${itemsHtml}</td>
                         <td>${formatCurrency(o.total_amount)}</td>
                         <td>${deliveryLabel}</td>
@@ -6703,7 +6703,7 @@
 
             returns.forEach(r => {
                 const items = (r.items || []).filter(i => i.id);
-                const itemSummary = items.map(i => `${i.product_name || 'Product'} x${i.quantity}`).join(', ');
+                const itemSummary = items.map(i => `${escapeHtml(i.product_name || 'Product')} x${i.quantity}`).join(', ');
                 const roleBadge = r.customer_role === 'wholesale'
                     ? ' <span class="badge badge-info" style="font-size:0.65rem;">Wholesale</span>'
                     : '';
@@ -6730,8 +6730,8 @@
 
                 html += `<tr>
                     <td><strong>${returnLabel}</strong></td>
-                    <td>#${r.order_number || r.order_id}</td>
-                    <td>${r.customer_name || 'Unknown'}${roleBadge}<br><small style="color:var(--text-muted);">${r.customer_email || ''}</small></td>
+                    <td>#${escapeHtml(String(r.order_number || r.order_id))}</td>
+                    <td>${escapeHtml(r.customer_name || 'Unknown')}${roleBadge}<br><small style="color:var(--text-muted);">${escapeHtml(r.customer_email || '')}</small></td>
                     <td style="max-width:200px;white-space:normal;font-size:0.85rem;">${itemSummary || '—'}</td>
                     <td style="white-space:normal;font-size:0.85rem;">${getReturnReasonHtml(r.reason)}</td>
                     <td style="font-weight:600;">₹${parseFloat(r.refund_amount || 0).toFixed(2)}</td>
@@ -6789,7 +6789,7 @@
                 <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
                     ${i.product_image ? `<img src="${i.product_image}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">` : ''}
                     <div>
-                        <div style="font-weight:600;">${i.product_name || 'Product #' + i.product_id}</div>
+                        <div style="font-weight:600;">${escapeHtml(i.product_name || 'Product #' + i.product_id)}</div>
                         <div style="color:var(--text-muted);font-size:0.85rem;">Qty: ${i.quantity} × ₹${parseFloat(i.price).toFixed(2)}</div>
                     </div>
                 </div>
@@ -6808,8 +6808,8 @@
                         </div>
                         <div class="modal-body">
                             <div style="margin-bottom:1rem;">
-                                <strong>Order:</strong> #${r.order_number || r.order_id}<br>
-                                <strong>Customer:</strong> ${r.customer_name} (${r.customer_email})<br>
+                                <strong>Order:</strong> #${escapeHtml(String(r.order_number || r.order_id))}<br>
+                                <strong>Customer:</strong> ${escapeHtml(r.customer_name || '')} (${escapeHtml(r.customer_email || '')})<br>
                                 <strong>Refund Amount:</strong> ₹${parseFloat(r.refund_amount || 0).toFixed(2)}<br>
                                 <strong>Reason:</strong> ${getReturnReasonHtml(r.reason)}
                             </div>
@@ -6823,7 +6823,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Admin Notes</label>
-                                <textarea id="return-admin-notes" class="form-input" rows="3" placeholder="Optional notes...">${r.admin_notes || ''}</textarea>
+                                <textarea id="return-admin-notes" class="form-input" rows="3" placeholder="Optional notes...">${escapeHtml(r.admin_notes || '')}</textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -6855,7 +6855,7 @@
                 <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
                     ${i.product_image ? `<img src="${i.product_image}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">` : ''}
                     <div>
-                        <div style="font-weight:600;">${i.product_name || 'Product #' + i.product_id}</div>
+                        <div style="font-weight:600;">${escapeHtml(i.product_name || 'Product #' + i.product_id)}</div>
                         <div style="color:var(--text-muted);font-size:0.85rem;">Qty: ${i.quantity} × ₹${parseFloat(i.price).toFixed(2)}</div>
                     </div>
                 </div>
@@ -6877,10 +6877,10 @@
                         </div>
                         <div class="modal-body">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;margin-bottom:1.25rem;">
-                                <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Order</span><div style="font-weight:600;">#${r.order_number || r.order_id}</div></div>
+                                <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Order</span><div style="font-weight:600;">#${escapeHtml(String(r.order_number || r.order_id))}</div></div>
                                 <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Status</span><div>${getReturnStatusBadge(r.status)}</div></div>
-                                <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Customer</span><div style="font-weight:600;">${r.customer_name || '—'}</div></div>
-                                <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Email</span><div style="font-size:0.85rem;">${r.customer_email || '—'}</div></div>
+                                <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Customer</span><div style="font-weight:600;">${escapeHtml(r.customer_name || '—')}</div></div>
+                                <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Email</span><div style="font-size:0.85rem;">${escapeHtml(r.customer_email || '—')}</div></div>
                                 <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Refund Amount</span><div style="font-weight:700;color:var(--success);">₹${parseFloat(r.refund_amount || 0).toFixed(2)}</div></div>
                                 <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Date</span><div>${formatDate(r.created_at)}</div></div>
                             </div>
@@ -6972,7 +6972,7 @@
             complaints.forEach(c => {
                 const items = (c.items || []).filter(i => i.id);
                 const itemsHtml = items.length
-                    ? items.map(i => `<div style="white-space:nowrap;">${i.product_name || 'Product'} &times; ${i.quantity}</div>`).join('')
+                    ? items.map(i => `<div style="white-space:nowrap;">${escapeHtml(i.product_name || 'Product')} &times; ${i.quantity}</div>`).join('')
                     : '<span style="color:var(--text-muted);">\u2014</span>';
 
                 const dispatchedAt = c.out_for_delivery_at ? formatDate(c.out_for_delivery_at) : '\u2014';
@@ -6980,11 +6980,11 @@
                 const timeSinceDispatch = c.out_for_delivery_at ? getTimeDiff(c.out_for_delivery_at) : '\u2014';
 
                 html += `<tr>
-                    <td><strong>${c.order_number || '#' + c.id}</strong></td>
+                    <td><strong>${escapeHtml(String(c.order_number || '#' + c.id))}</strong></td>
                     <td>
-                        <div style="font-weight:600;">${c.full_name || 'No account'}</div>
-                        <small style="color:var(--text-muted);">${c.email || ''}</small>
-                        ${c.phone ? '<br><small style="color:var(--text-muted);">' + c.phone + '</small>' : ''}
+                        <div style="font-weight:600;">${escapeHtml(c.full_name || 'No account')}</div>
+                        <small style="color:var(--text-muted);">${escapeHtml(c.email || '')}</small>
+                        ${c.phone ? '<br><small style="color:var(--text-muted);">' + escapeHtml(c.phone) + '</small>' : ''}
                     </td>
                     <td style="font-size:0.85rem;">${itemsHtml}</td>
                     <td><strong>${formatCurrency(c.total_amount)}</strong></td>
@@ -7080,7 +7080,7 @@
             const itemsHtml = items.map(i => `
                 <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
                     <div>
-                        <div style="font-weight:600;">${i.product_name || 'Product #' + i.product_id}</div>
+                        <div style="font-weight:600;">${escapeHtml(i.product_name || 'Product #' + i.product_id)}</div>
                         <div style="color:var(--text-muted);font-size:0.85rem;">Qty: ${i.quantity} &times; \u20B9${parseFloat(i.price || 0).toFixed(2)}</div>
                     </div>
                 </div>
@@ -7096,20 +7096,20 @@
             modal.innerHTML = `
                 <div class="modal-content" style="max-width:560px;">
                     <div class="modal-header" style="background:linear-gradient(135deg,#fef2f2,#fee2e2);">
-                        <h3 style="color:#dc2626;display:flex;align-items:center;gap:0.5rem;"><i class="fas fa-exclamation-triangle"></i> Complaint \u2014 ${c.order_number || '#' + c.id}</h3>
+                        <h3 style="color:#dc2626;display:flex;align-items:center;gap:0.5rem;"><i class="fas fa-exclamation-triangle"></i> Complaint \u2014 ${escapeHtml(String(c.order_number || '#' + c.id))}</h3>
                         <button class="modal-close" onclick="document.getElementById('complaint-detail-modal').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;margin-bottom:1.25rem;">
-                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Customer</span><div style="font-weight:600;">${c.full_name || '\u2014'}</div></div>
-                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Email</span><div style="font-size:0.85rem;">${c.email || '\u2014'}</div></div>
-                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Phone</span><div style="font-size:0.85rem;">${c.phone || '\u2014'}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Customer</span><div style="font-weight:600;">${escapeHtml(c.full_name || '\u2014')}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Email</span><div style="font-size:0.85rem;">${escapeHtml(c.email || '\u2014')}</div></div>
+                            <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Phone</span><div style="font-size:0.85rem;">${escapeHtml(c.phone || '\u2014')}</div></div>
                             <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Amount</span><div style="font-weight:700;color:var(--danger);">${formatCurrency(c.total_amount)}</div></div>
                             <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Dispatched</span><div>${dispatchedAt}</div></div>
                             <div><span style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;">Reported</span><div>${reportedAt}</div></div>
                         </div>
                         ${c.delivery_address ? `<div style="margin-bottom:1.25rem;padding:0.75rem 1rem;background:var(--bg-light,#f8f9fa);border-radius:8px;border-left:4px solid var(--primary);"><div style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.4rem;">Delivery Address</div><div style="font-size:0.9rem;white-space:pre-wrap;">${(c.delivery_address || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>` : ''}
-                        ${c.courier_phone ? `<div style="margin-bottom:1.25rem;padding:0.75rem 1rem;background:#fffbea;border-radius:8px;border-left:4px solid var(--warning);"><div style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.4rem;">Courier Phone</div><div style="font-size:0.95rem;font-weight:600;"><a href="tel:${c.courier_phone}" style="color:var(--primary);text-decoration:none;">${c.courier_phone}</a></div></div>` : ''}
+                        ${c.courier_phone ? `<div style="margin-bottom:1.25rem;padding:0.75rem 1rem;background:#fffbea;border-radius:8px;border-left:4px solid var(--warning);"><div style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.4rem;">Courier Phone</div><div style="font-size:0.95rem;font-weight:600;"><a href="tel:${escapeHtml(c.courier_phone)}" style="color:var(--primary);text-decoration:none;">${escapeHtml(c.courier_phone)}</a></div></div>` : ''}
                         <div><strong style="display:block;margin-bottom:0.5rem;">Order Items:</strong>${itemsHtml || '<p style="color:var(--text-muted);">No items listed</p>'}</div>
                     </div>
                     <div class="modal-footer" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -9355,7 +9355,7 @@
 
                 const items = Array.isArray(o.items) ? o.items : [];
                 const itemsHtml = items.length
-                    ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
+                    ? items.map(it => `<div style="white-space:nowrap;">${escapeHtml(it.product_name)} &times; ${it.quantity}</div>`).join('')
                     : '<span style="color:var(--text-muted);">—</span>';
 
                 // Derive effective status: if a non-rejected return exists, treat as 'returned'
@@ -9405,8 +9405,8 @@
                 html += `
                     <tr>
                         <td>#${o.id}</td>
-                        <td>${o.order_number || '-'}</td>
-                        <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small>${waBtn ? '<br>' + waBtn : ''}</td>
+                        <td>${escapeHtml(o.order_number || '-')}</td>
+                        <td>${escapeHtml(o.full_name || 'No account')}<br><small>${escapeHtml(o.email || '')}</small>${waBtn ? '<br>' + waBtn : ''}</td>
                         <td style="font-size:0.85rem;">${itemsHtml}</td>
                         <td>${formatCurrency(o.total_amount)}</td>
                         <td>${deliveryLabel}</td>
@@ -9527,7 +9527,7 @@
 
                 const items = Array.isArray(o.items) ? o.items : [];
                 const itemsHtml = items.length
-                    ? items.map(it => `<div style="white-space:nowrap;">${it.product_name} &times; ${it.quantity}</div>`).join('')
+                    ? items.map(it => `<div style="white-space:nowrap;">${escapeHtml(it.product_name)} &times; ${it.quantity}</div>`).join('')
                     : '<span style="color:var(--text-muted);">—</span>';
 
                 const actionsHtml = o.status === 'pending'
@@ -9544,8 +9544,8 @@
                 html += `
                     <tr>
                         <td>#${o.id}</td>
-                        <td>${o.order_number || '-'}</td>
-                        <td>${o.full_name || 'No account'}<br><small>${o.email || ''}</small></td>
+                        <td>${escapeHtml(o.order_number || '-')}</td>
+                        <td>${escapeHtml(o.full_name || 'No account')}<br><small>${escapeHtml(o.email || '')}</small></td>
                         <td style="font-size:0.85rem;">${itemsHtml}</td>
                         <td>${formatCurrency(o.total_amount)}</td>
                         <td><span class="badge ${statusBadgeClass}">${statusLabel}</span></td>
@@ -9623,7 +9623,7 @@
                 <div style="background:var(--bg-primary,#fff);border-radius:16px;max-width:480px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.2);animation:slideUp .25s ease;">
                     <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border,#e5e7eb);display:flex;justify-content:space-between;align-items:center;">
                         <h3 style="margin:0;font-size:1.1rem;display:flex;align-items:center;gap:0.5rem;">
-                            <i class="fas fa-truck" style="color:#6366f1;"></i> Delivery Tracking &mdash; Order #${o.order_number || o.id}
+                            <i class="fas fa-truck" style="color:#6366f1;"></i> Delivery Tracking &mdash; Order #${escapeHtml(String(o.order_number || o.id))}
                         </h3>
                         <button onclick="document.getElementById('tracking-modal-overlay').remove()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);">&#10005;</button>
                     </div>
@@ -9631,12 +9631,12 @@
                         <div style="display:grid;gap:1rem;">
                             <div>
                                 <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.35rem;">Tracking Number</label>
-                                <input id="trk-number" type="text" placeholder="e.g. 1234567890" value="${o.tracking_number || ''}"
+                                <input id="trk-number" type="text" placeholder="e.g. 1234567890" value="${escapeHtml(o.tracking_number || '')}"
                                     style="width:100%;padding:0.65rem 0.85rem;border:2px solid var(--border,#e5e7eb);border-radius:10px;font-size:0.92rem;box-sizing:border-box;">
                             </div>
                             <div>
                                 <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.35rem;">Tracking URL <span style="font-weight:400;color:var(--text-light)">(optional)</span></label>
-                                <input id="trk-url" type="url" placeholder="https://track.delhivery.com/..." value="${o.tracking_url || ''}"
+                                <input id="trk-url" type="url" placeholder="https://track.delhivery.com/..." value="${escapeHtml(o.tracking_url || '')}"
                                     style="width:100%;padding:0.65rem 0.85rem;border:2px solid var(--border,#e5e7eb);border-radius:10px;font-size:0.92rem;box-sizing:border-box;">
                             </div>
                             <div>
@@ -9710,7 +9710,7 @@
                 <div style="background:var(--bg-primary,#fff);border-radius:16px;max-width:460px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.2);">
                     <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border,#e5e7eb);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#fff7ed,#ffedd5);border-radius:16px 16px 0 0;">
                         <h3 style="margin:0;font-size:1.05rem;display:flex;align-items:center;gap:0.5rem;color:#c2410c;">
-                            <i class="fas fa-shipping-fast"></i> Mark Out for Delivery &mdash; Order #${o.order_number || o.id}
+                            <i class="fas fa-shipping-fast"></i> Mark Out for Delivery &mdash; Order #${escapeHtml(String(o.order_number || o.id))}
                         </h3>
                         <button onclick="document.getElementById('ofd-modal-overlay').remove()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);">&#10005;</button>
                     </div>

@@ -3,6 +3,8 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const nodemailer = require('nodemailer');
+const { authenticateToken } = require('../middleware/auth');
+const { adminCheck } = require('../middleware/adminCheck');
 const {
   notifyOrderConfirmed, notifyOrderDeclined, notifyOrderDelivered,
   notifyReturnApproved, notifyReturnRejected
@@ -44,7 +46,7 @@ async function sendActionResultEmail({ subject, icon, color, title, detail, acti
 }
 
 // ── Test endpoint: hit /api/email-actions/test in a browser to verify SMTP ──
-router.get('/test', async (req, res) => {
+router.get('/test', authenticateToken, adminCheck, async (req, res) => {
   const host = String(process.env.SMTP_HOST || '').trim();
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const user = String(process.env.SMTP_USER || '').trim();

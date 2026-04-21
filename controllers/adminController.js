@@ -1240,13 +1240,15 @@ exports.getDashboardHistory = async (req, res) => {
       ORDER BY o.created_at::date DESC
     `, params);
 
+    const refundParams = [];
     const refundWhere = from && to
-      ? `AND r.processed_at::date >= '${from}' AND r.processed_at::date <= '${to}'`
+      ? (refundParams.push(from, to), `AND r.processed_at::date >= $1 AND r.processed_at::date <= $2`)
       : year && !isNaN(parseInt(year, 10))
-        ? `AND EXTRACT(YEAR FROM r.processed_at) = ${parseInt(year, 10)}`
+        ? (refundParams.push(parseInt(year, 10)), `AND EXTRACT(YEAR FROM r.processed_at) = $1`)
         : '';
     const refundResult = await db.query(
-      `SELECT COALESCE(SUM(r.refund_amount), 0) AS total_refunds FROM returns r WHERE r.status = 'refunded' ${refundWhere}`
+      `SELECT COALESCE(SUM(r.refund_amount), 0) AS total_refunds FROM returns r WHERE r.status = 'refunded' ${refundWhere}`,
+      refundParams
     );
     const totalRefunds = parseFloat(refundResult.rows[0]?.total_refunds) || 0;
 
