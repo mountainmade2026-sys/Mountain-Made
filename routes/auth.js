@@ -43,6 +43,7 @@ const otpVerifyRateLimit = authRateLimit({ windowMs: 10 * 60 * 1000, maxAttempts
 
 // Public routes
 router.get('/check-email', authController.checkEmail);
+router.get('/check-phone', authController.checkPhone);
 router.post('/register', registerRateLimit, authController.register);
 router.post('/login', loginRateLimit, authController.login);
 router.get('/google/config', authController.getGoogleConfig);

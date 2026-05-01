@@ -433,7 +433,11 @@
 
                 <div class="form-group">
                     <label class="form-label">Phone Number *</label>
-                    <input type="tel" id="phone" class="form-input">
+                    <div style="position:relative;">
+                        <input type="tel" id="phone" class="form-input">
+                        <span id="phone-check-icon" style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);font-size:1rem;display:none;"></span>
+                    </div>
+                    <small id="phone-status-msg" style="display:none;margin-top:0.3rem;font-size:0.8rem;"></small>
                     <input type="hidden" id="phone_verification_token">
                     <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
                         <button id="send-otp-btn" type="button" class="btn btn-secondary" style="padding:0.45rem 0.75rem;">
@@ -1128,6 +1132,78 @@
         });
         // ────────────────────────────────────────────────────────────
 
+        // ── Real-time Phone validation ──────────────────────────────
+        const phoneInput = document.getElementById('phone');
+        const phoneStatusMsg = document.getElementById('phone-status-msg');
+        const phoneCheckIcon = document.getElementById('phone-check-icon');
+        let phoneCheckTimer = null;
+        let lastCheckedPhone = '';
+
+        function setPhoneStatus(status, message) {
+            phoneStatusMsg.style.display = message ? 'block' : 'none';
+            phoneStatusMsg.textContent = message;
+            phoneCheckIcon.style.display = status ? 'inline' : 'none';
+            if (status === 'ok') {
+                phoneInput.style.borderColor = '#059669';
+                phoneCheckIcon.textContent = '✓';
+                phoneCheckIcon.style.color = '#059669';
+                phoneStatusMsg.style.color = '#065f46';
+            } else if (status === 'error') {
+                phoneInput.style.borderColor = '#dc2626';
+                phoneCheckIcon.textContent = '✕';
+                phoneCheckIcon.style.color = '#dc2626';
+                phoneStatusMsg.style.color = '#b91c1c';
+            } else if (status === 'loading') {
+                phoneInput.style.borderColor = '#d1d5db';
+                phoneCheckIcon.textContent = '⟳';
+                phoneCheckIcon.style.color = '#6b7280';
+                phoneStatusMsg.style.color = '#6b7280';
+            } else {
+                phoneInput.style.borderColor = '';
+                phoneCheckIcon.style.display = 'none';
+                phoneStatusMsg.style.display = 'none';
+            }
+        }
+
+        async function checkPhoneAvailability(phone) {
+            if (!phone) { setPhoneStatus(null, ''); return; }
+            setPhoneStatus('loading', 'Checking...');
+            try {
+                const data = await api.get('/auth/check-phone?phone=' + encodeURIComponent(phone));
+                if (data.status === 'available') {
+                    setPhoneStatus('ok', 'Phone is available.');
+                } else if (data.status === 'taken') {
+                    setPhoneStatus('error', 'This phone number is already in use.');
+                } else {
+                    setPhoneStatus('error', 'Invalid phone number.');
+                }
+            } catch (_) {
+                setPhoneStatus(null, '');
+            }
+        }
+
+        phoneInput.addEventListener('input', () => {
+            clearTimeout(phoneCheckTimer);
+            const val = phoneInput.value.trim();
+            if (!val) { setPhoneStatus(null, ''); return; }
+            phoneCheckTimer = setTimeout(() => {
+                if (val !== lastCheckedPhone) {
+                    lastCheckedPhone = val;
+                    checkPhoneAvailability(val);
+                }
+            }, 700);
+        });
+
+        phoneInput.addEventListener('blur', () => {
+            clearTimeout(phoneCheckTimer);
+            const val = phoneInput.value.trim();
+            if (val && val !== lastCheckedPhone) {
+                lastCheckedPhone = val;
+                checkPhoneAvailability(val);
+            }
+        });
+        // ────────────────────────────────────────────────────────────
+
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -1150,9 +1226,16 @@
             } catch (error) {
                 const msg = error.message || 'Registration failed';
                 if (msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('already in use') || msg.toLowerCase().includes('already been used')) {
-                    setEmailStatus('error', 'This Gmail is already been used.');
-                    emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    showAlert('This Gmail is already been used.', 'error');
+                    // Check if it's email or phone
+                    if (msg.toLowerCase().includes('phone')) {
+                        setPhoneStatus('error', 'This phone number is already in use.');
+                        phoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        showAlert('This phone number is already in use.', 'error');
+                    } else {
+                        setEmailStatus('error', 'This Gmail is already been used.');
+                        emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        showAlert('This Gmail is already been used.', 'error');
+                    }
                 } else {
                     showAlert(msg, 'error');
                 }

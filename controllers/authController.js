@@ -266,6 +266,23 @@ exports.checkEmail = async (req, res) => {
   }
 };
 
+exports.checkPhone = async (req, res) => {
+  try {
+    const phone = (req.query.phone || '').trim();
+    // Remove +91 prefix if present
+    const cleanPhone = phone.startsWith('+91') ? phone.slice(-10) : phone.replace(/^\+?91/, '');
+    if (!cleanPhone || !/^\d{10}$/.test(cleanPhone)) {
+      return res.json({ status: 'invalid' });
+    }
+    const existing = await User.findByPhone(cleanPhone);
+    if (existing) return res.json({ status: 'taken' });
+    return res.json({ status: 'available' });
+  } catch (err) {
+    console.error('checkPhone error:', err);
+    return res.status(500).json({ status: 'error' });
+  }
+};
+
 exports.register = async (req, res) => {
   try {
     const {
