@@ -8,6 +8,7 @@ const twilio = require('twilio');
 const https = require('https');
 const db = require('../config/database');
 const { getLicenseState, LICENSE_EXPIRED_MESSAGE } = require('../middleware/adminLicense');
+const { notifyOrderConfirmed, notifyOrderShipped, notifyOutForDelivery } = require('../utils/whatsappService');
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -38,6 +39,89 @@ function normalizeEmail(value) {
 
 function normalizePhone(value) {
   return String(value || '').trim();
+}
+
+async function getOrderContactForNotification(orderSnapshot = {}) {
+  const order = orderSnapshot || {};
+  const phone = String(order.phone || order.user_phone || '').trim();
+  const fullName = String(order.full_name || order.user_full_name || '').trim();
+  const orderNumber = String(order.order_number || order.id || '').trim();
+
+  if (phone && fullName) {
+    return {
+      phone,
+      full_name: fullName,
+      order_number: orderNumber
+    };
+  }
+
+  if (!order.user_id) {
+    return {
+      phone,
+      full_name: fullName || 'Customer',
+      order_number: orderNumber
+    };
+  }
+
+  try {
+    const userResult = await db.query(
+      'SELECT full_name, phone FROM users WHERE id = $1',
+      [order.user_id]
+    );
+    const user = userResult.rows[0] || {};
+    return {
+      phone: phone || String(user.phone || '').trim(),
+      full_name: fullName || String(user.full_name || '').trim() || 'Customer',
+      order_number: orderNumber
+    };
+  } catch (error) {
+    console.warn('[WA] Failed to resolve customer contact for notification:', error.message);
+    return {
+      phone,
+      full_name: fullName || 'Customer',
+      order_number: orderNumber
+    };
+  }
+}
+
+async function sendOrderStatusWhatsApp(orderSnapshot, newStatus, previousStatus, options = {}) {
+  const statusTransitions = {
+    processing: 'confirmed',
+    shipped: 'shipped',
+    out_for_delivery: 'out_for_delivery'
+  };
+
+  if (!Object.prototype.hasOwnProperty.call(statusTransitions, newStatus)) {
+    return;
+  }
+
+  if (previousStatus === newStatus) {
+    return;
+  }
+
+  const customer = await getOrderContactForNotification(orderSnapshot);
+  if (!customer.phone) {
+    console.warn(`[WA] No customer phone found for order ${customer.order_number || orderSnapshot?.id || 'unknown'}; skipping ${newStatus} notification.`);
+    return;
+  }
+
+  try {
+    if (newStatus === 'processing') {
+      await notifyOrderConfirmed(customer.phone, customer.full_name || 'Customer', customer.order_number || orderSnapshot?.id);
+      return;
+    }
+
+    if (newStatus === 'shipped') {
+      await notifyOrderShipped(customer.phone, customer.full_name || 'Customer', customer.order_number || orderSnapshot?.id);
+      return;
+    }
+
+    if (newStatus === 'out_for_delivery') {
+      await notifyOutForDelivery(customer.phone, customer.full_name || 'Customer', customer.order_number || orderSnapshot?.id, options.otp);
+    }
+  } catch (error) {
+    console.error(`[WA] Failed to send ${newStatus} notification for order ${customer.order_number || orderSnapshot?.id || 'unknown'}:`, error.message);
+  }
 }
 
 function toWhatsappAddress(value) {
@@ -933,6 +1017,10 @@ exports.updateOrderStatus = async (req, res) => {
 
       const order = updateResult.rows[0];
 
+      if (status === 'processing' || status === 'shipped' || status === 'out_for_delivery') {
+        void sendOrderStatusWhatsApp(order, status, existingOrder.status);
+      }
+
       res.json({ 
         message: 'Order status updated successfully.',
         order 
@@ -993,6 +1081,10 @@ exports.updateOrderTracking = async (req, res) => {
          RETURNING *`,
         values
       );
+
+      if (mark_shipped && currentStatus === 'processing') {
+        void sendOrderStatusWhatsApp(result.rows[0], 'shipped', currentStatus);
+      }
 
       res.json({ message: 'Tracking info updated successfully.', order: result.rows[0] });
     } finally {
@@ -1067,6 +1159,8 @@ exports.markOutForDelivery = async (req, res) => {
         if (!customer.phone) customer.phone = u.phone || '';
       } catch (e) { console.warn('[OFD] user lookup failed:', e.message); }
     }
+
+    void sendOrderStatusWhatsApp(order, 'out_for_delivery', currentStatus);
 
     const baseUrl = String(process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
     const confirmUrl = `${baseUrl}/delivery-confirm?order=${id}`;

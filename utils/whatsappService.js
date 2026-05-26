@@ -304,6 +304,7 @@ module.exports = {
   sendWhatsAppMessage,
   notifyOrderPlaced,
   notifyOrderConfirmed,
+  notifyOrderShipped,
   notifyOrderDeclined,
   notifyOrderDelivered,
   notifyReturnApproved,
@@ -312,14 +313,27 @@ module.exports = {
   notifyCourierDispatch
 };
 
-async function notifyOutForDelivery(phone, name, orderNumber, otp) {
+async function notifyOrderShipped(phone, name, orderNumber) {
   const msg =
-    `Hello ${name}! \u{1F69A}\n\n` +
+    `Hello ${name}! 🚚\n\n` +
+    `Your order *${orderNumber}* has been *shipped* and is on its way to you.\n\n` +
+    `You will receive another update once it is out for delivery.\n\n` +
+    `— Mount Made 🌿`;
+  return sendWhatsAppMessage(phone, msg).catch(err =>
+    console.error('[WHATSAPP] notifyOrderShipped failed:', err.message)
+  );
+}
+
+async function notifyOutForDelivery(phone, name, orderNumber, otp) {
+  const otpLine = otp
+    ? `🔐 *Your Delivery OTP: ${otp}*\n\nPlease share this OTP with the delivery person when they arrive to confirm receipt.\n\n⚠️ Do NOT share this OTP with anyone else.`
+    : `🔐 Your delivery OTP will be shared by the delivery executive when they arrive.\n\nPlease keep your phone nearby and confirm the delivery once it reaches you.`;
+
+  const msg =
+    `Hello ${name}! 🚚\n\n` +
     `Great news! Your order *${orderNumber}* is *Out for Delivery* and will reach you shortly.\n\n` +
-    `\uD83D\uDD10 *Your Delivery OTP: ${otp}*\n\n` +
-    `Please share this OTP with the delivery person when they arrive to confirm receipt.\n\n` +
-    `\u26A0\uFE0F Do NOT share this OTP with anyone else.\n\n` +
-    `\u2014 Mount Made \uD83C\uDF3F`;
+    `${otpLine}\n\n` +
+    `— Mount Made 🌿`;
   return sendWhatsAppMessage(phone, msg).catch(err =>
     console.error('[WHATSAPP] notifyOutForDelivery failed:', err.message)
   );
